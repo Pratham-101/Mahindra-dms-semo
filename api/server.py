@@ -92,15 +92,29 @@ def get_invoice_diagnostics(p):
     inv_no   = (p.get("InvoiceNo") or "").strip()      # SOP literal had a leading space
     inv_date = norm_date(p.get("InvoiceDate"))
 
+    # NETWORK-WIDE READ. A customer who moves state walks into a different dealer, and
+    # that dealer has to be able to see the record — so the invoice is found by its own
+    # number and date, NOT by who is asking. The caller still has to present a valid
+    # dealer token; what changed is that the token no longer narrows WHICH records are
+    # visible, only that the caller is a real dealer.
     inv = q("""SELECT * FROM MDMS_VEHICLE_INVOICE
-                WHERE DEALER_ID=? AND BRANCH_ID=? AND TRIM(INVOICE_NO)=? AND DATE(INVOICE_DATE)=DATE(?)""",
-            (dealer, branch, inv_no, inv_date))
+                WHERE TRIM(INVOICE_NO)=? AND DATE(INVOICE_DATE)=DATE(?)""",
+            (inv_no, inv_date))
     if not inv:
         return 200, "Invoice not found", {"Found": False, "InvoiceNo": inv_no, "InvoiceDate": inv_date}
     inv = inv[0]
 
+    # Everything below resolves from the INVOICE's own dealer and branch, never the
+    # caller's. The PM E-Drive entitlement is set by the state the vehicle was invoiced
+    # in — read it against the caller's state and a Karnataka dealer asking about a
+    # Maharashtra invoice would be quoted the wrong money.
+    owner_dealer, owner_branch = inv["DEALER_ID"], inv["BRANCH_ID"]
+    queried_by_other = (str(owner_dealer) != str(dealer) or str(owner_branch) != str(branch))
+
     out = {
         "Found": True,
+        "QueriedByAnotherDealer": queried_by_other,
+        "InvoicedBy": {"DEALER_ID": owner_dealer, "BRANCH_ID": owner_branch},
         "Invoice": {k: inv[k] for k in
                     ("VEH_INVOICE_ID","DEALER_ID","BRANCH_ID","INVOICE_NO","INVOICE_DATE",
                      "BOOKING_ID","CUSTOMER_ID","DISC_VALUE","CRM_REF_CUST_CODE","RTO_ID",
@@ -115,10 +129,11 @@ def get_invoice_diagnostics(p):
                   FROM MDMS_BOOKING_PART bp
                   JOIN MDMS_MODEL_PART  mp ON mp.PART_ID = bp.PART_ID
                  WHERE bp.BOOKING_ID=? AND bp.DEALER_ID=? AND bp.BRANCH_ID=?""",
-             (inv["BOOKING_ID"], dealer, branch))
+             (inv["BOOKING_ID"], owner_dealer, owner_branch))
     out["Model"] = part[0] if part else None
 
-    dlr = q("SELECT STATE_ID, DEALER_NAME FROM MDMS_DEALER WHERE DEALER_ID=? AND BRANCH_ID=?", (dealer, branch))
+    dlr = q("SELECT STATE_ID, DEALER_NAME FROM MDMS_DEALER WHERE DEALER_ID=? AND BRANCH_ID=?",
+            (owner_dealer, owner_branch))
     state = dlr[0]["STATE_ID"] if dlr else None
     out["Dealer"] = dlr[0] if dlr else None
 
