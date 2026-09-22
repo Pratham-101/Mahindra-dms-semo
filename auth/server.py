@@ -16,8 +16,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs
 
 PORT   = int(os.environ.get("AUTH_PORT", "8899"))
-APP_ID = os.environ.get("PLUG_APP_ID", "")
-AAT    = os.environ.get("DEVREV_AAT", "")
+APP_ID = os.environ.get("PLUG_APP_ID", "").strip()
+AAT    = os.environ.get("DEVREV_AAT", "").strip()
 
 if not AAT:
     for p in [os.path.expanduser("~/.devrev_aat"), ".devrev_aat", "../.devrev_aat"]:
@@ -235,8 +235,8 @@ class H(BaseHTTPRequestHandler):
             # `if False`, so the page always rendered dealer 13111 while the PluG
             # session token carried whoever had really signed in — the header and
             # the bot then disagreed about who the dealer was.
-            for k, v in (("__SESSION_TOKEN__", token),
-                         ("__PLUG_APP_ID__",   APP_ID),
+            for k, v in (("__SESSION_TOKEN__", (token or "").strip()),
+                         ("__PLUG_APP_ID__",   (APP_ID or "").strip()),
                          ("__DEALER_ID__",     dealer),
                          ("__BRANCH_ID__",     branch),
                          ("__DMS_USER_ID__",   user),
