@@ -1,0 +1,12 @@
+# Explicit build plan. Without this Nixpacks has to infer the language, and
+# this project has no main.py and no dependencies to give it the hint.
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = ["echo 'no dependencies to install'"]
+
+[start]
+cmd = "python3 app.py"

@@ -1,0 +1,2 @@
+# No third-party dependencies — Python standard library only.
+# This file exists so Nixpacks detects the project as Python.
