@@ -1,0 +1,11 @@
+# secrets — never commit; these are Railway environment variables
+.devrev_aat
+.devrev_pat
+.plug_app_id
+.public_url
+*.pem
+.env
+
+__pycache__/
+*.pyc
+.DS_Store
