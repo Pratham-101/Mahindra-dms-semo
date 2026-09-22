@@ -107,7 +107,10 @@ table.g tr:nth-child(even) td{background:#fafbfc}
 /* ── PluG / bot ─────────────────────────────── */
 #launch{position:fixed;right:20px;bottom:20px;z-index:60;width:54px;height:54px;border-radius:50%;
   background:linear-gradient(145deg,#1573c4,#0b4f8c);border:none;cursor:pointer;color:#fff;
-  box-shadow:0 6px 20px rgba(11,60,100,.42);display:flex;align-items:center;justify-content:center}
+  box-shadow:0 6px 20px rgba(11,60,100,.42);align-items:center;justify-content:center;
+  /* Hidden unless PluG fails. The real DevRev widget brings its own launcher, and
+     two bubbles in the corner reads as a half-built page. */
+  display:none}
 #launch:hover{transform:scale(1.05)}
 #launch svg{width:25px;height:25px}
 #launch .dot{position:absolute;top:1px;right:1px;width:13px;height:13px;border-radius:50%;
@@ -799,8 +802,9 @@ function bootPlug(){
 
 /* Keep our own bubble alive as an escape hatch when PluG does not come up. */
 function offerSimulator(){
+  // display:'' would fall back to the stylesheet, which now hides it.
   const L=document.getElementById('launch');
-  if(L) L.style.display='';
+  if(L) L.style.display='flex';
 }
 function startSimulator(){
   SIM=true; wipe();
