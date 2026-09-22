@@ -2,7 +2,7 @@
 """
 Mock OnlineDMS API — Vehicle Invoice slice.
 
-Mirrors the conventions of the real TVS API as documented in
+Mirrors the conventions of the real OEM API as documented in
 "Job Card APIs — Payload Reference for DevRev.docx":
 
   base path   /OnlineSalesAPI/
@@ -60,7 +60,7 @@ def norm_date(v):
     """
     Accept the date the way a dealer actually types it.
 
-    TVS screens show DD/MM/YYYY, so that is what a dealer reads out and what the
+    DMS screens show DD/MM/YYYY, so that is what a dealer reads out and what the
     agent echoes back. SQLite's DATE() only understands ISO, so an unnormalised
     '28/06/2026' silently matched nothing and the dealer was told their invoice
     does not exist. A format difference must never read as a missing invoice.
@@ -296,14 +296,14 @@ def service_token_for_dealer(headers, body):
     THE FIX for "a shared master token cannot work".
 
     The DevRev side never holds a dealer's token and never holds a token that can
-    read data. It holds a SERVICE CREDENTIAL whose only power is to ask TVS for a
+    read data. It holds a SERVICE CREDENTIAL whose only power is to ask the DMS for a
     token scoped to ONE dealer — the dealer DevRev has already verified through the
-    PluG session. TVS decides whether to issue it, and records that it did.
+    PluG session. The DMS decides whether to issue it, and records that it did.
 
     So the chain is:
         DMS login  ->  DevRev verified session (we built this)
         ->  workflow presents service credential + that dealer's id
-        ->  TVS mints a token good for that dealer only
+        ->  the DMS mints a token good for that dealer only
         ->  every data call is scoped, and every mint is audited.
     """
     client = headers.get("X-Service-Client")
@@ -535,8 +535,8 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS</title>
 </style>
 <div class=w>
 <h1>Mock OnlineDMS — Vehicle Invoice</h1>
-<p class=sub>Stand-in for the TVS DMS backend, built so the API contract can be settled and tested before TVS writes any code.</p>
-<div class=warn><b>Synthetic data.</b> Not a TVS dump. Table and column names are taken verbatim from the Vehicle Invoice SOP; the rows are generated and anchored on the SOP's own sample values.</div>
+<p class=sub>Stand-in for the DMS backend, built so the API contract can be settled and tested before the OEM writes any code.</p>
+<div class=warn><b>Synthetic data.</b> Not a production dump. Table and column names are taken verbatim from the Vehicle Invoice SOP; the rows are generated and anchored on the SOP's own sample values.</div>
 
 <h2>Try it</h2>
 <div class=ep><span class="m get">GET</span><code>/OnlineSalesAPI/Login/TokenGeneration</code>
@@ -573,7 +573,7 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS</title>
 <tr><td><code>13111</code> / <code>1</code></td><td>dealer and branch from the SOP</td></tr>
 <tr><td><code>1152344</code> &middot; <code>2026-07-09</code></td><td>the SOP's invoice</td></tr>
 <tr><td><code>26307</code></td><td>its booking</td></tr>
-<tr><td><code>KE190260DB</code> &rarr; <code>000030000300000029</code></td><td>part &rarr; model (TVS iQube S)</td></tr>
+<tr><td><code>KE190260DB</code> &rarr; <code>000030000300000029</code></td><td>part &rarr; model (Mahindra XUV400 EL)</td></tr>
 <tr><td><code>KAR</code> &rarr; EMPS <code>5000</code></td><td>dealer state &rarr; subsidy</td></tr>
 <tr><td><code>EMR150200007988RF4761</code></td><td>an EMR code deliberately used on TWO invoices</td></tr>
 </table>

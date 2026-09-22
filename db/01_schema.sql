@@ -1,10 +1,10 @@
 -- =====================================================================
 --  OnlineDMS — Vehicle Invoice slice
---  Mock schema for the TVS Dealer BOT POC
+--  Mock schema for the Dealer BOT POC
 --
---  Table and column names are taken VERBATIM from the SQL in the TVS
+--  Table and column names are taken VERBATIM from the SQL in the
 --  Vehicle Invoice SOP (revised, 8 Sep 2026). Where the SOP does not name
---  a column, it is marked  -- [QK]  so TVS can correct it against the real
+--  a column, it is marked  -- [QK]  so the OEM can correct it against the real
 --  OnlineDMS schema. Nothing here is invented silently.
 --
 --  Dialect: T-SQL (SQL Server), because OnlineDMS is SQL Server.

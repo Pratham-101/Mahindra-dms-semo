@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mock TVS MicroDMS — the smallest thing that proves the login handshake.
+Mock MicroDMS — the smallest thing that proves the login handshake.
 
 It does exactly what the real DMS must do, and nothing else:
   1. a dealer "logs in"
@@ -55,7 +55,7 @@ def mint_session_token(dealer_id, branch_id, dms_user_id, display_name, role):
                     "tnt__dealer_role": role,
                 },
             },
-            "account_traits": {"display_name": f"TVS Dealer {dealer_id}"},
+            "account_traits": {"display_name": f"Mahindra Dealer {dealer_id}"},
         }
     }
     req = urllib.request.Request(
@@ -153,7 +153,7 @@ PAGE = """<!doctype html><meta charset=utf-8><title>MicroDMS — Vehicle Invoice
  .tip{background:#e6effa;border-left:4px solid #0b5fc7;padding:14px 18px;border-radius:0 8px 8px 0;font-size:14px;line-height:1.6}
  code{background:#eef1f5;padding:2px 6px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:13px}
 </style>
-<header><b>TVS MicroDMS</b><span class=who>Signed in — __NAME__ · dealer __DEALER__ / branch __BRANCH__</span></header>
+<header><b>MicroDMS</b><span class=who>Signed in — __NAME__ · dealer __DEALER__ / branch __BRANCH__</span></header>
 <div class=wrap>
  <div class=card><h2>Vehicle Invoice</h2>
   <table>

@@ -2,17 +2,17 @@
 Minimal HS256 JWT — mint and verify.
 
 Deliberately stdlib-only so the mock runs with no pip install. It mirrors the
-shape TVS actually uses (per the Job Card payload doc): a Bearer token whose
+shape the OEM actually uses (per the Job Card payload doc): a Bearer token whose
 claims carry DealerId, BranchId and UserId, which every endpoint then validates
 AGAINST THE REQUEST. A mismatch is a 401.
 
 In the real DMS this is issued by Login/TokenGeneration and signed with a key
-held on the TVS side. Do not copy this file into production — copy the SHAPE.
+held on the DMS side. Do not copy this file into production — copy the SHAPE.
 """
 import base64, hmac, hashlib, json, time
 
-# Mock signing key. The real one lives in TVS's secret store.
-SECRET = b"tvs-mock-dms-signing-key-not-for-production"
+# Mock signing key. The real one lives in the OEM's secret store.
+SECRET = b"mock-dms-signing-key-not-for-production"
 
 
 def _b64(raw: bytes) -> str:
@@ -65,7 +65,7 @@ def validate_against_request(token: str, dealer_id, branch_id, user_id):
     """
     THE RULE THAT MATTERS.
 
-    TVS: "every endpoint validates the JWT claims (DealerId, BranchId, UserId)
+    Per the spec: "every endpoint validates the JWT claims (DealerId, BranchId, UserId)
     against the request via sc.ValidateToken(...). Mismatch -> 401."
 
     This is what stops dealer A asking for dealer B's invoice, and it is why a

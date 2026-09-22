@@ -4,9 +4,9 @@ Builds the local SQLite copy of the OnlineDMS Vehicle Invoice slice.
 
 Why SQLite: it runs with no install so the mock is one command to start.
 The authoritative DDL is db/01_schema.sql (T-SQL, SQL Server) — that is what
-TVS should read. This script mirrors the same tables and columns.
+the OEM should read. This script mirrors the same tables and columns.
 
-The data is SYNTHETIC. It is not a TVS dump. It is anchored on the exact
+The data is SYNTHETIC. It is not a production dump. It is anchored on the exact
 sample values in the Vehicle Invoice SOP so a walkthrough matches the document,
 and then padded with ~3 months of generated invoices so queries behave like
 they would against a real table rather than a 6-row toy.
@@ -78,9 +78,9 @@ DEALERS = [(13111,1,"KAR","Lakeview Motors, Bangalore"),
            (10587,1,"MH","Riverside Auto, Pune"),
            (14071,1,"KL","Harbour Motors, Cochin"),
            (17250,1,"MH","Northgate Wheels, Mumbai")]
-MODELS  = [(SOP_MODEL,"KE190260DB","TVS iQube S"), ("000030000300000031","KE242080","TVS iQube ST"),
-           ("000030000300000045","KE300120","TVS X"),  ("000020000200000011","KE165400","TVS Ntorq 125"),
-           ("000020000200000012","KE320120","TVS Apache RTR 160"), ("000020000200000013","KE190455","TVS Jupiter 110")]
+MODELS  = [(SOP_MODEL,"KE190260DB","Mahindra XUV400 EL"), ("000030000300000031","KE242080","Mahindra BE 6"),
+           ("000030000300000045","KE300120","Mahindra XEV 9e"),  ("000020000200000011","KE165400","Mahindra Bolero Neo"),
+           ("000020000200000012","KE320120","Mahindra Scorpio N"), ("000020000200000013","KE190455","Mahindra Thar ROXX")]
 EV_MODELS = {m[0] for m in MODELS[:3]}     # only the EVs carry an EMPS row
 
 FIRST = ["John","Daniel","Emma","Oliver","Grace","Henry","Alice","Thomas","Clara","Edward",
