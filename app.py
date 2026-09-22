@@ -12,6 +12,7 @@ servers that both have to be reachable from a browser:
 So this process starts both on loopback and proxies by path:
 
     /OnlineSalesAPI/*   ->  api/server.py   (127.0.0.1:8900)
+    /db                 ->  api/server.py   its SQL table browser
     everything else     ->  auth/server.py  (127.0.0.1:8899)
 
 Neither child is modified in any way that changes its behaviour - the point of
@@ -25,7 +26,9 @@ HERE      = os.path.dirname(os.path.abspath(__file__))
 PORT      = int(os.environ.get("PORT", "8080"))
 API_PORT  = int(os.environ.get("MOCK_DMS_PORT", "8900"))
 AUTH_PORT = int(os.environ.get("AUTH_PORT", "8899"))
-API_PREFIX = "/OnlineSalesAPI"
+# Paths the DMS API owns. /db is its SQL table browser — the screen that shows the
+# data behind every answer, which is half the point of the demo.
+API_PATHS = ("/OnlineSalesAPI", "/db")
 
 # Headers that belong to the hop, not the message. Forwarding these corrupts the
 # response - a Content-Length copied from the child fights the one we write.
@@ -61,7 +64,7 @@ class Router(BaseHTTPRequestHandler):
     server_version = "MahindraDMSDemo/1.0"
 
     def _target(self):
-        return API_PORT if self.path.startswith(API_PREFIX) else AUTH_PORT
+        return API_PORT if self.path.startswith(API_PATHS) else AUTH_PORT
 
     def _proxy(self):
         n = int(self.headers.get("Content-Length") or 0)
@@ -112,7 +115,7 @@ def main():
     threading.Thread(target=wait_for, args=(AUTH_PORT, "auth/portal"), daemon=True).start()
 
     print(f"[router] listening on 0.0.0.0:{PORT}", flush=True)
-    print(f"[router]   {API_PREFIX}/*  -> mock DMS  :{API_PORT}", flush=True)
+    print(f"[router]   {'  '.join(API_PATHS)}  -> mock DMS  :{API_PORT}", flush=True)
     print(f"[router]   /*              -> portal    :{AUTH_PORT}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Router).serve_forever()
 
