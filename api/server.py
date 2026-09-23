@@ -588,7 +588,7 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS</title>
 <tr><td><code>13111</code> / <code>1</code></td><td>dealer and branch from the SOP</td></tr>
 <tr><td><code>1152344</code> &middot; <code>2026-07-09</code></td><td>the SOP's invoice</td></tr>
 <tr><td><code>26307</code></td><td>its booking</td></tr>
-<tr><td><code>KE190260DB</code> &rarr; <code>000030000300000029</code></td><td>part &rarr; model (Mahindra XUV400 EL)</td></tr>
+<tr><td><code>KE190260DB</code> &rarr; <code>000030000300000029</code></td><td>part &rarr; model (TVS iQube S)</td></tr>
 <tr><td><code>KAR</code> &rarr; EMPS <code>5000</code></td><td>dealer state &rarr; subsidy</td></tr>
 <tr><td><code>EMR150200007988RF4761</code></td><td>an EMR code deliberately used on TWO invoices</td></tr>
 </table>

@@ -61,7 +61,7 @@ def wait_for(port, name, timeout=40):
 
 class Router(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    server_version = "MahindraDMSDemo/1.0"
+    server_version = "TVSDealerBotDemo/1.0"
 
     def _target(self):
         return API_PORT if self.path.startswith(API_PATHS) else AUTH_PORT

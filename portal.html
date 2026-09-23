@@ -187,7 +187,7 @@ table.g tr:nth-child(even) td{background:#fafbfc}
   <div class="brand"><span class="t">MicroDMS</span><span class="sub">Dealer Management System</span></div>
   <div class="sp"></div>
   <div class="sess">
-    <div class="chip"><span>Dealer</span> <b id="sessDealerId">13111</b> — <span id="sessDealerName">MAHINDRA DEALER</span></div>
+    <div class="chip"><span>Dealer</span> <b id="sessDealerId">13111</b> — <span id="sessDealerName">SRI VENKATESWARA TVS</span></div>
     <div class="chip"><span>Branch</span> <b id="sessBranchId">1</b> — <span id="sessBranchName">Main</span></div>
     <div class="chip"><span>User</span> <b id="sessUserId">DLR13111.BILL01</b></div>
     <div class="chip"><span>Role</span> <b id="sessRole">Billing Executive</b></div>
@@ -262,7 +262,7 @@ table.g tr:nth-child(even) td{background:#fafbfc}
         <div class="grid2">
           <div class="f"><label>Part ID</label><input class="mono" value="KE190260DB" readonly></div>
           <div class="f"><label>Model ID</label><input class="mono" value="000030000300000029" readonly></div>
-          <div class="f"><label>Model</label><input value="Mahindra XUV400 2.2 kWh" readonly></div>
+          <div class="f"><label>Model</label><input value="TVS iQube 2.2 kWh" readonly></div>
           <div class="f"><label>State</label><input class="mono" value="KAR" readonly></div>
         </div>
         <table class="g" style="margin-top:10px">
@@ -316,7 +316,7 @@ table.g tr:nth-child(even) td{background:#fafbfc}
 
 <script>
 /* ══════════════════════════════════════════════════════════════════════
-   Mahindra Dealer BOT — demo harness
+   TVS Dealer BOT — demo harness
    Use case: Vehicle Invoice Issues
    Source: Vehicle Invoice Issues.docx (revised, Purushottam, 8 Sep 2026)
            + DMS POC API Mapping.xlsx > 'Vehicle Invoice Flow' tab
@@ -478,7 +478,7 @@ const F = {
      ch:[["Created it, invoice works now","done"],["I'm unable to create, still facing the error","ind2"]]},
   ind2:{bot:["Please create an L1 ticket."],
      tick:{sub:"Vehicle Invoice — Price Not Defined, unable to create in Vehicle Price Master",assign:"L1 Support",
-       carry:["Customer type: Individual / other (not CSD)","Model Mahindra XUV400 2.2 kWh · Part KE190260DB","Vehicle Price Master creation attempted and failed","Dealer 13111 · Branch 1"],
+       carry:["Customer type: Individual / other (not CSD)","Model TVS iQube 2.2 kWh · Part KE190260DB","Vehicle Price Master creation attempted and failed","Dealer 13111 · Branch 1"],
        note:"This Individual path is new in the 8 September revision — the earlier SOP carried only the CSD path. An Individual customer needs a price created, not the Sales Institutional Team approval."}}
  }},
 
@@ -629,7 +629,7 @@ function ticket(t){
   h+='<div class="tl">The ticket carries</div><ul>'+t.carry.map(c=>'<li>'+esc(c)+'</li>').join('')+'</ul>';
   if(t.note)h+='<div class="warn"><b>Why:</b> '+esc(t.note)+'</div>';
   w.innerHTML=h;log().appendChild(w);scroll();
-  sys('Conversation closed with a ticket. In production this is a DevRev ticket on the Mahindra DMS workspace.');
+  sys('Conversation closed with a ticket. In production this is a DevRev ticket on the TVS POC workspace.');
 }
 
 function go(id){

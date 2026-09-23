@@ -55,7 +55,7 @@ def mint_session_token(dealer_id, branch_id, dms_user_id, display_name, role):
                     "tnt__dealer_role": role,
                 },
             },
-            "account_traits": {"display_name": f"Mahindra Dealer {dealer_id}"},
+            "account_traits": {"display_name": f"TVS Dealer {dealer_id}"},
         }
     }
     req = urllib.request.Request(

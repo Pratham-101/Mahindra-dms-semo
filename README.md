@@ -1,4 +1,4 @@
-# Mahindra DMS — Dealer Support Bot demo
+# TVS DMS — Dealer Support Bot demo
 
 A working replica of a dealer management system with an AI support agent attached, used to
 demonstrate ticket deflection for the Vehicle Invoice use case.
@@ -98,8 +98,13 @@ Karnataka carries ₹5,000, Maharashtra ₹4,500, Kerala ₹5,500.
 ## Notes
 
 The dealer never types a dealer ID or branch ID. Both come from the PluG session token minted at
-sign-in, and every DMS call is scoped to them — a 15-minute JWT bound to dealer, branch and user.
-Ask for another dealer's invoice and the DMS returns "not found", which is the behaviour you want.
+sign-in — a 15-minute JWT bound to dealer, branch and user.
+
+Lookups are network-wide: a customer who moves state walks into a different dealer, and that
+dealer has to be able to see the record. The token proves the caller is a real dealer; it does not
+narrow which records are visible. Model, dealer and state resolve from the INVOICE's own dealer,
+never the caller's — PM E-Drive is set by the state the vehicle was invoiced in, so reading it
+against the caller's state would quote the wrong money.
 
 Raising a ticket ends the chat: the conversation becomes the ticket, and support replies inside
 it. The bot cannot post to that thread afterwards.
