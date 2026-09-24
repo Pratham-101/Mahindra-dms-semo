@@ -4,9 +4,9 @@ Builds the local SQLite copy of the OnlineDMS Vehicle Invoice slice.
 
 Why SQLite: it runs with no install so the mock is one command to start.
 The authoritative DDL is db/01_schema.sql (T-SQL, SQL Server) — that is what
-the OEM should read. This script mirrors the same tables and columns.
+TVS should read. This script mirrors the same tables and columns.
 
-The data is SYNTHETIC. It is not a production dump. It is anchored on the exact
+The data is SYNTHETIC. It is not a TVS dump. It is anchored on the exact
 sample values in the Vehicle Invoice SOP so a walkthrough matches the document,
 and then padded with ~3 months of generated invoices so queries behave like
 they would against a real table rather than a 6-row toy.
@@ -56,6 +56,22 @@ CREATE TABLE MDMS_API_AUDIT (
 CREATE TABLE MDMS_API_IDEMPOTENCY (
   IDEMPOTENCY_KEY TEXT PRIMARY KEY, ENDPOINT TEXT NOT NULL, DEALER_ID INTEGER NOT NULL,
   REQUEST_HASH TEXT NOT NULL, RESPONSE_JSON TEXT NOT NULL, CREATED_AT TEXT NOT NULL);
+
+CREATE TABLE MDMS_DEALERSHIP (
+  DEALERSHIP_CODE TEXT PRIMARY KEY, DEALER_CODE TEXT, DEALERSHIP_NAME TEXT, ACTIVE INTEGER);
+CREATE TABLE MDMS_AMC (
+  AMC_ID INTEGER PRIMARY KEY, AMC_NO TEXT, FRAME_NO TEXT, DEALER_ID INTEGER,
+  BRANCH_ID INTEGER, DEALERSHIP_CODE TEXT, CUSTOMER_ID INTEGER, STATUS INTEGER,
+  VALID_FROM TEXT, VALID_TILL TEXT, ACTIVE INTEGER);
+CREATE TABLE MDMS_JOB_TYPE (
+  JOB_TYPE_ID INTEGER PRIMARY KEY, JOB_TYPE_DESC TEXT);
+CREATE TABLE MDMS_MODEL_JOB_TYPE (
+  MODEL_ID TEXT, JOB_TYPE_ID INTEGER, VALID_KM INTEGER, GRACE_KM INTEGER,
+  VALID_DAYS INTEGER, GRACE_DAYS INTEGER, ACTIVE INTEGER);
+CREATE TABLE MDMS_JOB_CARD (
+  JC_ID INTEGER PRIMARY KEY, JC_NO TEXT, FRAME_NO TEXT, DEALER_ID INTEGER,
+  BRANCH_ID INTEGER, MODEL_ID TEXT, JOB_TYPE_ID INTEGER, CURRENT_KM INTEGER,
+  SALE_DATE TEXT, STATUS INTEGER, ACTIVE INTEGER);
 """
 
 # ── anchors taken verbatim from the SOP ──────────────────────────────────────
@@ -123,6 +139,57 @@ def main():
             if not (mid == SOP_MODEL and st == "KAR"):
                 prices.append((mid, st, "CSD", round(random.uniform(80000, 185000), 2), 1))
     cu.executemany("INSERT INTO MDMS_VEHICLE_PRICE_MASTER VALUES (?,?,?,?,?)", prices)
+
+    # ── AMC Issues + Job Type Issues ────────────────────────────────────────
+    # Seeded so every documented branch has a row that reaches it. The branches
+    # are the point: an AMC that is not Open cannot have its dates changed, and
+    # Scenario 4 turns entirely on whether the holding dealership is active.
+    dships = []
+    for i, (d, b, st, nm) in enumerate(DEALERS):
+        dships.append((f"DS{d}{b}", f"DC{d}", nm, 1))
+    dships.append(("DS90001", "DC90001", "Eastway Motors, Nagpur (closed down)", 0))
+    cu.executemany("INSERT INTO MDMS_DEALERSHIP VALUES (?,?,?,?)", dships)
+
+    JOB_TYPES = [(31, "Paid Service"), (12, "Running Repair"), (1, "Free Service"),
+                 (7, "PDI"), (9, "Insurance Claim"), (14, "Accidental Repair")]
+    cu.executemany("INSERT INTO MDMS_JOB_TYPE VALUES (?,?)", JOB_TYPES)
+
+    # Model-level eligibility. PDI and insurance are deliberately NOT enabled on
+    # every model, which is what makes "not listing" a real answer rather than a bug.
+    mjt = []
+    for mid, _, _ in MODELS:
+        for jt, vkm, gkm, vd, gd in ((31, 20000, 2000, 365, 30),
+                                     (12, 100000, 5000, 1095, 60),
+                                     (1, 5000, 500, 180, 15),
+                                     (14, 100000, 5000, 1095, 60)):
+            mjt.append((mid, jt, vkm, gkm, vd, gd, 1))
+        # one model carries an INACTIVE row: enabled in the manual, off in the DMS
+        if mid == SOP_MODEL:
+            mjt.append((mid, 9, 100000, 5000, 1095, 60, 0))
+    cu.executemany("INSERT INTO MDMS_MODEL_JOB_TYPE VALUES (?,?,?,?,?,?,?)", mjt)
+
+    amcs, jcs = [], []
+    aid, jid = 700001, 800001
+    for n, (d, b, st, nm) in enumerate(DEALERS):
+        for k in range(6):
+            frame = f"MD6{d}{b}{k}T1H{11100+k}"
+            mid = MODELS[k % len(MODELS)][0]
+            # statuses: mostly Open, some Closed and Cancelled so the guard fires
+            status = 0 if k < 4 else (1 if k == 4 else 2)
+            # one AMC per dealer sits under the closed-down dealership
+            dscode = "DS90001" if k == 3 else f"DS{d}{b}"
+            vf = dt.date(2026, 1, 10) + dt.timedelta(days=k * 11)
+            amcs.append((aid, f"AMC{aid}", frame, d, b, dscode, 500001 + n * 10 + k,
+                         status, str(vf), str(vf + dt.timedelta(days=365)), 1))
+            # job card: statuses 3 and 6 are the ones the source excludes
+            jstatus = (3 if k == 0 else 6 if k == 1 else 1)
+            km = 6000 + k * 9000          # k>=2 crosses the Paid Service 20000+2000 limit
+            jcs.append((jid, f"JC{jid}", frame, d, b, mid, 31 if k % 2 == 0 else 12,
+                        km, str(dt.date(2026, 3, 1) + dt.timedelta(days=k * 40)), jstatus, 1))
+            aid += 1; jid += 1
+    cu.executemany("INSERT INTO MDMS_AMC VALUES (?,?,?,?,?,?,?,?,?,?,?)", amcs)
+    cu.executemany("INSERT INTO MDMS_JOB_CARD VALUES (?,?,?,?,?,?,?,?,?,?,?)", jcs)
+
 
     # ── customers, bookings, invoices: ~3 months ────────────────────────────
     custs, bookings, invs = [], [], []

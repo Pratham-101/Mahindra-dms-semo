@@ -1,10 +1,10 @@
 -- =====================================================================
 --  OnlineDMS — Vehicle Invoice slice
---  Mock schema for the Dealer BOT POC
+--  Mock schema for the TVS Dealer BOT POC
 --
---  Table and column names are taken VERBATIM from the SQL in the
+--  Table and column names are taken VERBATIM from the SQL in the TVS
 --  Vehicle Invoice SOP (revised, 8 Sep 2026). Where the SOP does not name
---  a column, it is marked  -- [QK]  so the OEM can correct it against the real
+--  a column, it is marked  -- [QK]  so TVS can correct it against the real
 --  OnlineDMS schema. Nothing here is invented silently.
 --
 --  Dialect: T-SQL (SQL Server), because OnlineDMS is SQL Server.
@@ -157,4 +157,62 @@ CREATE TABLE dbo.MDMS_API_IDEMPOTENCY (
     REQUEST_HASH    VARCHAR(64)  NOT NULL,
     RESPONSE_JSON   NVARCHAR(MAX) NOT NULL,
     CREATED_AT      DATETIME     NOT NULL DEFAULT GETDATE()
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- AMC Issues and Job Type Issues
+--
+-- Added 24 Sep 2026. Column names follow the routes named in the API mapping
+-- workbook and the bot-flow documents. Where the source does not name a column,
+-- it is marked [QK] so TVS can correct it against the real schema.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE dbo.MDMS_DEALERSHIP (
+  DEALERSHIP_CODE  TEXT PRIMARY KEY,
+  DEALER_CODE      TEXT,                 -- [QK] resolved by DealerMaster/CheckDealerValidation
+  DEALERSHIP_NAME  TEXT,                 -- returned by AMC/PopulateAMCVehicleDetails
+  ACTIVE           INTEGER               -- decides branch B vs branch C of Scenario 4
+);
+
+CREATE TABLE dbo.MDMS_AMC (
+  AMC_ID           INTEGER PRIMARY KEY,
+  AMC_NO           TEXT,
+  FRAME_NO         TEXT,
+  DEALER_ID        INTEGER,
+  BRANCH_ID        INTEGER,
+  DEALERSHIP_CODE  TEXT,                 -- which dealership the AMC is open under
+  CUSTOMER_ID      INTEGER,
+  STATUS           INTEGER,              -- 0 Open · 1 Closed · 2 Cancelled
+  VALID_FROM       TEXT,
+  VALID_TILL       TEXT,
+  ACTIVE           INTEGER
+);
+
+CREATE TABLE dbo.MDMS_JOB_TYPE (
+  JOB_TYPE_ID      INTEGER PRIMARY KEY,
+  JOB_TYPE_DESC    TEXT
+);
+
+CREATE TABLE dbo.MDMS_MODEL_JOB_TYPE (
+  MODEL_ID         TEXT,
+  JOB_TYPE_ID      INTEGER,
+  VALID_KM         INTEGER,
+  GRACE_KM         INTEGER,
+  VALID_DAYS       INTEGER,
+  GRACE_DAYS       INTEGER,
+  ACTIVE           INTEGER
+);
+
+CREATE TABLE dbo.MDMS_JOB_CARD (
+  JC_ID            INTEGER PRIMARY KEY,
+  JC_NO            TEXT,
+  FRAME_NO         TEXT,
+  DEALER_ID        INTEGER,
+  BRANCH_ID        INTEGER,
+  MODEL_ID         TEXT,
+  JOB_TYPE_ID      INTEGER,
+  CURRENT_KM       INTEGER,
+  SALE_DATE        TEXT,                 -- [QK] drives the VALID_DAYS comparison
+  STATUS           INTEGER,              -- source excludes 3 and 6 when checking "already created"
+  ACTIVE           INTEGER
 );

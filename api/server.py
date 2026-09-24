@@ -2,7 +2,7 @@
 """
 Mock OnlineDMS API — Vehicle Invoice slice.
 
-Mirrors the conventions of the real OEM API as documented in
+Mirrors the conventions of the real TVS API as documented in
 "Job Card APIs — Payload Reference for DevRev.docx":
 
   base path   /OnlineSalesAPI/
@@ -34,8 +34,7 @@ def q(sql, args=()):
 # The service credential the DevRev side holds. It can ONLY mint a dealer-scoped
 # token — it can never read or write dealer data by itself. That separation is the
 # whole point: a leaked service credential still cannot read an invoice.
-SERVICE_CLIENTS = {os.environ.get("SERVICE_CLIENT_ID", "devrev-dealer-bot"):
-                   os.environ.get("SERVICE_CLIENT_SECRET", "mock-service-secret-not-for-production")}
+SERVICE_CLIENTS = {"devrev-dealer-bot": "mock-service-secret-not-for-production"}
 
 
 def audit(endpoint, outcome, client=None, dealer=None, branch=None, user=None, key=None, detail=None):
@@ -60,7 +59,7 @@ def norm_date(v):
     """
     Accept the date the way a dealer actually types it.
 
-    DMS screens show DD/MM/YYYY, so that is what a dealer reads out and what the
+    TVS screens show DD/MM/YYYY, so that is what a dealer reads out and what the
     agent echoes back. SQLite's DATE() only understands ISO, so an unnormalised
     '28/06/2026' silently matched nothing and the dealer was told their invoice
     does not exist. A format difference must never read as a missing invoice.
@@ -311,14 +310,14 @@ def service_token_for_dealer(headers, body):
     THE FIX for "a shared master token cannot work".
 
     The DevRev side never holds a dealer's token and never holds a token that can
-    read data. It holds a SERVICE CREDENTIAL whose only power is to ask the DMS for a
+    read data. It holds a SERVICE CREDENTIAL whose only power is to ask TVS for a
     token scoped to ONE dealer — the dealer DevRev has already verified through the
-    PluG session. The DMS decides whether to issue it, and records that it did.
+    PluG session. TVS decides whether to issue it, and records that it did.
 
     So the chain is:
         DMS login  ->  DevRev verified session (we built this)
         ->  workflow presents service credential + that dealer's id
-        ->  the DMS mints a token good for that dealer only
+        ->  TVS mints a token good for that dealer only
         ->  every data call is scoped, and every mint is audited.
     """
     client = headers.get("X-Service-Client")
@@ -346,11 +345,165 @@ def service_token_for_dealer(headers, body):
                             "ScopedTo": {"DealerId": dealer, "BranchId": branch, "UserId": user or None}}
 
 
+
+def get_amc_diagnostics(p):
+    """
+    AMC Issues — one call that does what the entry step plus the scenario guards
+    need: find the AMC by frame and AMC number, confirm they are the SAME vehicle,
+    read STATUS, and resolve the dealership the AMC is open under together with
+    whether that dealership is still active.
+
+    That last fact is the whole of Scenario 4: the same request is handled three
+    different ways depending on it.
+    """
+    frame  = (p.get("FrameNo") or "").strip()
+    amc_no = (p.get("AmcNo") or "").strip()
+
+    rows = q("SELECT * FROM MDMS_AMC WHERE TRIM(AMC_NO)=? AND ACTIVE=1", (amc_no,))
+    if not rows:
+        return 200, "AMC not found", {"Found": False, "AmcNo": amc_no, "FrameNo": frame}
+    amc = rows[0]
+
+    # The entry step exists to catch exactly this.
+    if frame and amc["FRAME_NO"].strip().upper() != frame.upper():
+        return 200, "AMC and frame do not match", {
+            "Found": True, "FrameMatches": False,
+            "AmcNo": amc_no, "FrameOnAmc": amc["FRAME_NO"], "FrameGiven": frame,
+            "BotSummary": "[[S]]AMC " + amc_no + " is registered against frame " +
+                          amc["FRAME_NO"] + ", not " + frame + ". Confirm which vehicle "
+                          "this request is for before anything is changed.[[/S]]"}
+
+    ds = q("SELECT * FROM MDMS_DEALERSHIP WHERE DEALERSHIP_CODE=?", (amc["DEALERSHIP_CODE"],))
+    ds = ds[0] if ds else None
+    STATUS = {0: "Open", 1: "Closed", 2: "Cancelled"}
+    st = STATUS.get(amc["STATUS"], "Unknown")
+
+    out = {"Found": True, "FrameMatches": True,
+           "Amc": {k: amc[k] for k in ("AMC_NO","FRAME_NO","DEALER_ID","BRANCH_ID",
+                                       "CUSTOMER_ID","STATUS","VALID_FROM","VALID_TILL")},
+           "StatusLabel": st,
+           "IsOpen": amc["STATUS"] == 0,
+           "Dealership": ({"DEALERSHIP_CODE": ds["DEALERSHIP_CODE"], "DEALER_CODE": ds["DEALER_CODE"],
+                           "DEALERSHIP_NAME": ds["DEALERSHIP_NAME"], "ACTIVE": ds["ACTIVE"]}
+                          if ds else None)}
+
+    caller = str(p.get("DealerID") or "")
+    own = ds is not None and ds["DEALERSHIP_CODE"] == f"DS{caller}{p.get('BranchID')}"
+    out["HeldByCallingDealership"] = own
+
+    if not out["IsOpen"]:
+        out["BotSummary"] = ("[[S]]AMC " + amc_no + " is " + st + ", not Open. The validity "
+            "dates cannot be changed on an AMC in this state — a new AMC has to be created "
+            "instead.[[/S]]")
+    elif own:
+        out["BotSummary"] = ("[[S]]AMC " + amc_no + " is Open under your own dealership, valid "
+            + str(amc["VALID_FROM"])[:10] + " to " + str(amc["VALID_TILL"])[:10] +
+            ". You can close or cancel it yourself with customer OTP consent.[[/S]]")
+    elif ds and not ds["ACTIVE"]:
+        out["BotSummary"] = ("[[S]]AMC " + amc_no + " is Open under " + ds["DEALERSHIP_NAME"] +
+            ", which is INACTIVE. Support can proceed with the cancellation.[[/S]]")
+    else:
+        out["BotSummary"] = ("[[S]]AMC " + amc_no + " is Open under " +
+            (ds["DEALERSHIP_NAME"] if ds else "another dealership") + ", which is active. "
+            "The close or cancel has to be done by that dealership with customer consent — "
+            "it cannot be done from here.[[/S]]")
+    return 200, "Success", out
+
+
+def get_jobtype_diagnostics(p):
+    """
+    Job Type Issues — reads the job card for the frame, then the model-level job
+    types with their eligibility fields, and decides which of the three branches
+    of "not listing" applies.
+
+    PopulateJobCardDetailsAngular returns JOB_TYPE_ID but NOT model-level
+    eligibility, which is the entire reason the EnabledJobTypes wrapper exists.
+    """
+    frame = (p.get("FrameNo") or "").strip()
+    want  = p.get("RequestedJobTypeId")
+    want  = int(want) if str(want or "").strip().isdigit() else None
+
+    jc = q("SELECT * FROM MDMS_JOB_CARD WHERE TRIM(FRAME_NO)=? AND ACTIVE=1", (frame,))
+    if not jc:
+        return 200, "Job card not found", {"Found": False, "FrameNo": frame}
+    jc = jc[0]
+
+    types = q("""SELECT mjt.JOB_TYPE_ID, jt.JOB_TYPE_DESC, mjt.VALID_KM, mjt.GRACE_KM,
+                        mjt.VALID_DAYS, mjt.GRACE_DAYS, mjt.ACTIVE
+                   FROM MDMS_MODEL_JOB_TYPE mjt
+                   JOIN MDMS_JOB_TYPE jt ON jt.JOB_TYPE_ID = mjt.JOB_TYPE_ID
+                  WHERE mjt.MODEL_ID=?""", (jc["MODEL_ID"],))
+    cur = q("SELECT JOB_TYPE_DESC FROM MDMS_JOB_TYPE WHERE JOB_TYPE_ID=?", (jc["JOB_TYPE_ID"],))
+
+    out = {"Found": True,
+           "JobCard": {k: jc[k] for k in ("JC_NO","FRAME_NO","MODEL_ID","JOB_TYPE_ID",
+                                          "CURRENT_KM","SALE_DATE","STATUS")},
+           "CurrentJobType": (cur[0]["JOB_TYPE_DESC"] if cur else None),
+           "EnabledJobTypes": [t for t in types if t["ACTIVE"]],
+           "AllModelJobTypes": types}
+
+    # "already created" uses the source's own exclusion: STATUS not in (3,6)
+    out["OpenJobCardExists"] = jc["STATUS"] not in (3, 6)
+
+    if want is None:
+        out["BotSummary"] = ("[[S]]The job card on frame " + frame + " is currently " +
+            str(out["CurrentJobType"]) + ". Enabled job types for this model: " +
+            ", ".join(t["JOB_TYPE_DESC"] for t in out["EnabledJobTypes"]) + ".[[/S]]")
+        return 200, "Success", out
+
+    row = next((t for t in types if t["JOB_TYPE_ID"] == want), None)
+    label = next((t["JOB_TYPE_DESC"] for t in types if t["JOB_TYPE_ID"] == want),
+                 (q("SELECT JOB_TYPE_DESC FROM MDMS_JOB_TYPE WHERE JOB_TYPE_ID=?", (want,)) or
+                  [{"JOB_TYPE_DESC": str(want)}])[0]["JOB_TYPE_DESC"])
+
+    if row is None or not row["ACTIVE"]:
+        # Branch C — the model does not carry it, or carries it switched off.
+        out["Branch"] = "C_MANUAL_VS_DMS"
+        out["BotSummary"] = ("[[S]]" + label + " is not enabled for this model in the DMS. If "
+            "the dealer manual says it should be, that is a conflict between the manual and the "
+            "DMS configuration and needs an L1 ticket to investigate — it is not something to "
+            "decide here.[[/S]]")
+        return 200, "Success", out
+
+    km_limit = (row["VALID_KM"] or 0) + (row["GRACE_KM"] or 0)
+    beyond_km = (jc["CURRENT_KM"] or 0) > km_limit
+    day_limit = (row["VALID_DAYS"] or 0) + (row["GRACE_DAYS"] or 0)
+    days = None
+    try:
+        sale = dt.date.fromisoformat(str(jc["SALE_DATE"])[:10])
+        days = (dt.date.today() - sale).days
+    except Exception:                                            # noqa: BLE001
+        pass
+    beyond_days = days is not None and days > day_limit
+    out["Eligibility"] = {"JobType": label, "CurrentKM": jc["CURRENT_KM"],
+                          "KmLimit": km_limit, "BeyondKm": beyond_km,
+                          "DaysSinceSale": days, "DayLimit": day_limit,
+                          "BeyondDays": beyond_days}
+
+    if beyond_km or beyond_days:
+        out["Branch"] = "B_BEYOND_ELIGIBILITY"
+        why = []
+        if beyond_km:   why.append(f"{jc['CURRENT_KM']} km against a limit of {km_limit} km")
+        if beyond_days: why.append(f"{days} days since sale against a limit of {day_limit} days")
+        out["BotSummary"] = ("[[S]]" + label + " is not available on this vehicle because it is "
+            "beyond eligibility: " + " and ".join(why) + ". This is the system behaving "
+            "correctly, so no ticket is needed.[[/S]]")
+    else:
+        out["Branch"] = "A_WITHIN_ELIGIBILITY"
+        out["BotSummary"] = ("[[S]]" + label + " IS enabled for this model and the vehicle is "
+            "within eligibility (" + str(jc["CURRENT_KM"]) + " km against a limit of " +
+            str(km_limit) + " km). If it still does not list, that needs an L1 ticket with "
+            "these eligibility figures attached.[[/S]]")
+    return 200, "Success", out
+
+
 # GET routes: path -> (handler, params whose value must match the token claims)
 GET_ROUTES = {
     f"{BASE}/VehicleInvoice/GetInvoiceDiagnostics": get_invoice_diagnostics,
     f"{BASE}/VehicleInvoice/GetEmpsSubsidy":        get_emps_subsidy,
     f"{BASE}/VehicleInvoice/CheckEmrUsage":         check_emr_usage,
+    f"{BASE}/AMC/GetAMCDiagnostics":                get_amc_diagnostics,
+    f"{BASE}/JobType/GetJobTypeDiagnostics":        get_jobtype_diagnostics,
 }
 
 
@@ -550,8 +703,8 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS</title>
 </style>
 <div class=w>
 <h1>Mock OnlineDMS — Vehicle Invoice</h1>
-<p class=sub>Stand-in for the DMS backend, built so the API contract can be settled and tested before the OEM writes any code.</p>
-<div class=warn><b>Synthetic data.</b> Not a production dump. Table and column names are taken verbatim from the Vehicle Invoice SOP; the rows are generated and anchored on the SOP's own sample values.</div>
+<p class=sub>Stand-in for the TVS DMS backend, built so the API contract can be settled and tested before TVS writes any code.</p>
+<div class=warn><b>Synthetic data.</b> Not a TVS dump. Table and column names are taken verbatim from the Vehicle Invoice SOP; the rows are generated and anchored on the SOP's own sample values.</div>
 
 <h2>Try it</h2>
 <div class=ep><span class="m get">GET</span><code>/OnlineSalesAPI/Login/TokenGeneration</code>
@@ -598,4 +751,4 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS</title>
 if __name__ == "__main__":
     print(f"Mock OnlineDMS on http://127.0.0.1:{PORT}{BASE}/")
     print(f"  db: {os.path.abspath(DB)}\n")
-    HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+    HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
