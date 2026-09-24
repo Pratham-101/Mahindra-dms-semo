@@ -701,11 +701,28 @@ class Handler(BaseHTTPRequestHandler):
         return jwt_util.validate_against_request(hdr[7:], dealer, branch, user)
 
     def do_GET(self):
+        # Every route below is wrapped, because an unhandled exception here does not
+        # produce an error - it drops the connection, and a dropped connection reads
+        # as the whole service being down. That is exactly how the bug below
+        # presented: a 502 from the proxy, on a host that was serving every other
+        # path perfectly.
+        try:
+            return self._route_get()
+        except Exception as e:                                   # noqa: BLE001
+            return self._reply(500, f"Server error: {type(e).__name__}: {e}", None)
+
+    def _route_get(self):
         u = urllib.parse.urlparse(self.path)
         p = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
 
         if u.path == f"{BASE}/Login/TokenGeneration":
-            tok = jwt_util.mint(int(p.get("DealerID", 0)), int(p.get("BranchID", 0)), int(p.get("UserId", 0)))
+            # UserId is a STRING in the real DMS - DLR13111.BILL01 - which is what
+            # jwt_util.mint's own comment says and what the service-token route has
+            # always passed through. This route coerced it with int() and therefore
+            # crashed on every real user id, while numeric ids like 205406 worked.
+            # Nothing caught it: the console's "try it" link used a numeric id, and
+            # the audits mint through POST /Login/ServiceTokenForDealer instead.
+            tok = jwt_util.mint(p.get("DealerID", ""), p.get("BranchID", ""), p.get("UserId"))
             return self._reply(200, "Success", {"Token": tok, "ExpiresInSeconds": 8 * 3600})
         if u.path in ("/", "/index.html", BASE, BASE + "/"):
             return self._html(INDEX_HTML)
@@ -894,7 +911,7 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS
 <h2>Try it</h2>
 <div class=ep><span class="m get">GET</span><code>/OnlineSalesAPI/Login/TokenGeneration</code>
  <p class=d>Mints a dealer JWT. Every other call needs it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
- <a class=try href="/OnlineSalesAPI/Login/TokenGeneration?DealerID=13111&BranchID=1&UserId=205406">get a token for dealer 13111 &rarr;</a></div>
+ <a class=try href="/OnlineSalesAPI/Login/TokenGeneration?DealerID=13111&BranchID=1&UserId=DLR13111.BILL01">get a token for dealer 13111 &rarr;</a></div>
 
 <div class=ep><span class="m post">POST</span><code>/OnlineSalesAPI/Login/ServiceTokenForDealer</code>
  <p class=d>What DevRev uses. A <b>service credential</b> — headers <code>X-Service-Client</code> / <code>X-Service-Secret</code> — mints a token scoped to <b>one dealer</b>, valid 15 minutes. The credential itself can read nothing.</p></div>
