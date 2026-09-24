@@ -619,6 +619,57 @@ def update_amc_validity_dates(body, idem_key=None):
         return 200, "AMC not found", {"Changed": False, "AmcNo": amc_no}
     amc = rows[0]
 
+    # ── Guard 1: the frame must be given, and must match ─────────────────────
+    # AMC-01 steps 1-2: "Take the frame number, AMC number and the reason. Confirm
+    # the AMC and the vehicle match before anything else." The write was accepting
+    # an AMC number on its own, so a mistyped digit rewrote a DIFFERENT vehicle's
+    # AMC and the audit trail recorded it as a clean success. Source-backed, not a
+    # judgement call: the confirmation step is in the article.
+    frame = (body.get("FRAME_NO") or "").strip()
+    if not frame:
+        audit("AMC/UpdateAMCValidityDates", "REFUSED", dealer=dealer, branch=branch,
+              key=idem_key, detail=f"{amc_no}: no frame number given")
+        return 200, "Frame number is required", {
+            "Changed": False, "AmcNo": amc_no,
+            "BotSummary": "[[S]]I need the frame number before changing any dates. The AMC "
+                          "number and the vehicle have to be confirmed as the same one first, "
+                          "which is what catches a mistyped AMC number.[[/S]]"}
+    if amc["FRAME_NO"].strip().upper() != frame.upper():
+        audit("AMC/UpdateAMCValidityDates", "REFUSED", dealer=dealer, branch=branch,
+              key=idem_key, detail=f"{amc_no}: frame {frame} != {amc['FRAME_NO']}")
+        return 200, "AMC and frame do not match", {
+            "Changed": False, "AmcNo": amc_no, "FrameOnAmc": amc["FRAME_NO"], "FrameGiven": frame,
+            "BotSummary": "[[S]]AMC " + amc_no + " is registered against frame " +
+                          amc["FRAME_NO"] + ", not " + frame + ". Nothing has been changed — "
+                          "confirm which vehicle this request is for.[[/S]]"}
+
+    # ── Guard 2: only the dealership holding the AMC may change its dates ────
+    # ASSUMPTION, FLAGGED FOR TVS. AMC-01 does not state a dealership restriction on
+    # this write. AMC-04 states one explicitly for the other action in the same use
+    # case - "Never cancel an AMC open under another active dealership, however
+    # reasonable the request sounds" - so this applies that use case's own safety
+    # rule to its other write rather than inventing a new one.
+    #
+    # Without it, dealer 13111 rewrote the validity dates on AMC700033, held by
+    # Northgate Wheels (dealer 17250), and the audit recorded a clean success. The
+    # token is dealer-scoped precisely so one dealer cannot reach another's data;
+    # this write was looking the AMC up by number alone and ignoring that entirely.
+    # If TVS confirms a dealer may edit another dealership's AMC, delete this block.
+    own_code = f"DS{dealer}{branch}"
+    if (amc["DEALERSHIP_CODE"] or "").strip() != own_code:
+        held = q("SELECT DEALERSHIP_NAME FROM MDMS_DEALERSHIP WHERE DEALERSHIP_CODE=?",
+                 (amc["DEALERSHIP_CODE"],))
+        name = held[0]["DEALERSHIP_NAME"] if held else "another dealership"
+        audit("AMC/UpdateAMCValidityDates", "REFUSED", dealer=dealer, branch=branch,
+              key=idem_key,
+              detail=f"{amc_no}: held by {amc['DEALERSHIP_CODE']}, caller is {own_code}")
+        return 200, "AMC is held by another dealership", {
+            "Changed": False, "AmcNo": amc_no, "HeldBy": amc["DEALERSHIP_CODE"],
+            "HeldByCallingDealership": False,
+            "BotSummary": "[[S]]AMC " + amc_no + " is held by " + name + ", not your "
+                          "dealership. The validity dates have to be changed by the dealership "
+                          "the AMC is open under — nothing has been changed here.[[/S]]"}
+
     # The guard the SOP puts before the write. A raw UPDATE has no such guard,
     # which is exactly why this is a wrapper and not a passthrough.
     if amc["STATUS"] != 0:
