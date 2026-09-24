@@ -460,12 +460,6 @@ def get_jobtype_diagnostics(p):
     # "already created" uses the source's own exclusion: STATUS not in (3,6)
     out["OpenJobCardExists"] = jc["STATUS"] not in (3, 6)
 
-    if want == 12 and jc["JOB_TYPE_ID"] == 31:
-        # The one permitted change. feature/59 is what routes it to the ASM queue.
-        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/59"
-        out["TicketPartReason"] = ("Job Type Change Request: Paid Service (31) to Running "
-                                   "Repair (12). Gated on ASM approval.")
-
     if want is None:
         out["BotSummary"] = ("[[S]]The job card on frame " + frame + " is currently " +
             str(out["CurrentJobType"]) + ". Enabled job types for this model: " +
@@ -521,6 +515,14 @@ def get_jobtype_diagnostics(p):
             "within eligibility (" + str(jc["CURRENT_KM"]) + " km against a limit of " +
             str(km_limit) + " km). If it still does not list, that needs an L1 ticket with "
             "these eligibility figures attached.[[/S]]")
+
+    # A CHANGE REQUEST outranks the not-listing branch. The dealer asking to move
+    # 31 -> 12 is Scenario 1, which is an ASM approval on feature/59; the branch
+    # logic above also ran and set feature/60, so this has to come last.
+    if want == 12 and jc["JOB_TYPE_ID"] == 31:
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/59"
+        out["TicketPartReason"] = ("Job Type Change Request: Paid Service (31) to Running "
+                                   "Repair (12). The one permitted change, gated on ASM approval.")
     return 200, "Success", out
 
 
