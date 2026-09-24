@@ -425,22 +425,74 @@ def get_amc_diagnostics(p):
     own = ds is not None and ds["DEALERSHIP_CODE"] == f"DS{caller}{p.get('BranchID')}"
     out["HeldByCallingDealership"] = own
 
-    if not out["IsOpen"]:
-        out["BotSummary"] = ("[[S]]AMC " + amc_no + " is " + st + ", not Open. The validity "
-            "dates cannot be changed on an AMC in this state — a new AMC has to be created "
-            "instead.[[/S]]")
+    # ── The ruling depends on WHICH scenario is being asked ──────────────────
+    # This endpoint used to answer every closed-AMC question with the validity-date
+    # ruling, because that was the first scenario built. A dealer asking to REOPEN a
+    # closed AMC was told "the validity dates cannot be changed" — true, and not what
+    # they asked. Five scenarios share this lookup, so the caller says which one.
+    #
+    # Scenario is optional. Without it the summary states the facts and rules on
+    # nothing, which is the honest answer to "tell me about this AMC".
+    scenario = (p.get("Scenario") or "").strip().lower()
+    inactive = bool(ds) and not ds["ACTIVE"]
+    dsname   = ds["DEALERSHIP_NAME"] if ds else "another dealership"
+    dates    = str(amc["VALID_FROM"])[:10] + " to " + str(amc["VALID_TILL"])[:10]
+    head     = "AMC " + amc_no + " is " + st
+    S = lambda t: "[[S]]" + t + "[[/S]]"
+
+    # Scenario 2 — the rule is the answer, and it does not depend on status at all.
+    if scenario == "reopen":
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/55"
+        out["TicketPartReason"] = "AMC S2 — Reopen Request"
+        out["BotSummary"] = S(head + ". An AMC cannot be reopened. The correct route is to "
+            "create a new AMC. Do not offer a workaround, and do not say the rule is temporary "
+            "or that an exception can be requested — raise a ticket only if the dealer asks for "
+            "the rule itself to be reviewed.")
+
+    # Scenario 5 — blocked on a business decision, whatever the current status is.
+    elif scenario in ("statuschange", "status", "closecancelswap"):
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/58"
+        out["TicketPartReason"] = "AMC S5 — Close/Cancel status change"
+        out["BotSummary"] = S(head + ". Changing an AMC between Closed and Cancelled is not "
+            "currently supported — it needs a business decision that has not been made. Record "
+            "the request as a ticket. Give no date, and do not reach the same outcome by "
+            "cancelling and recreating.")
+
+    # Scenario 1 — the write, which is gated on Open.
+    elif scenario == "validity":
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/54"
+        out["TicketPartReason"] = "AMC S1 — Validity Date Change"
+        out["BotSummary"] = S(head + ", valid " + dates + ". The dates can be updated." ) \
+            if out["IsOpen"] else S(head + ", not Open. The validity dates cannot be changed on "
+            "an AMC in this state — a new AMC has to be created instead.")
+
+    # Scenario 4 — three branches, decided by who holds it and whether they are active.
+    elif scenario in ("close", "cancel", "closecancel"):
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/57"
+        out["TicketPartReason"] = "AMC S4 — Close / Cancel an Open AMC"
+        if not out["IsOpen"]:
+            out["BotSummary"] = S(head + ", not Open, so this scenario does not apply.")
+        elif own:
+            out["BotSummary"] = S(head + " under your own dealership, valid " + dates +
+                ". You can close or cancel it yourself with customer OTP consent.")
+        elif inactive:
+            out["BotSummary"] = S(head + " under " + dsname + ", which is INACTIVE. "
+                "Support can proceed with the cancellation.")
+        else:
+            out["BotSummary"] = S(head + " under " + dsname + ", which is active. The close or "
+                "cancel has to be done by that dealership with customer consent — it cannot be "
+                "done from here.")
+
+    # No scenario named: facts only. Rule on nothing.
+    elif not out["IsOpen"]:
+        out["BotSummary"] = S(head + ", not Open. Which of the AMC scenarios this is decides "
+            "what happens next — ask the dealer what they are trying to do.")
     elif own:
-        out["BotSummary"] = ("[[S]]AMC " + amc_no + " is Open under your own dealership, valid "
-            + str(amc["VALID_FROM"])[:10] + " to " + str(amc["VALID_TILL"])[:10] +
-            ". You can close or cancel it yourself with customer OTP consent.[[/S]]")
-    elif ds and not ds["ACTIVE"]:
-        out["BotSummary"] = ("[[S]]AMC " + amc_no + " is Open under " + ds["DEALERSHIP_NAME"] +
-            ", which is INACTIVE. Support can proceed with the cancellation.[[/S]]")
+        out["BotSummary"] = S(head + " under your own dealership, valid " + dates + ".")
+    elif inactive:
+        out["BotSummary"] = S(head + " under " + dsname + ", which is INACTIVE.")
     else:
-        out["BotSummary"] = ("[[S]]AMC " + amc_no + " is Open under " +
-            (ds["DEALERSHIP_NAME"] if ds else "another dealership") + ", which is active. "
-            "The close or cancel has to be done by that dealership with customer consent — "
-            "it cannot be done from here.[[/S]]")
+        out["BotSummary"] = S(head + " under " + dsname + ", which is active.")
     return 200, "Success", out
 
 
