@@ -157,6 +157,21 @@ def get_invoice_diagnostics(p):
             pr = q("""SELECT PRICE FROM MDMS_VEHICLE_PRICE_MASTER
                        WHERE MODEL_ID=? AND STATE_ID=? AND CUSTOMER_TYPE=? AND ACTIVE=1""",
                    (out["Model"]["MODEL_ID"], state, ctype))
+            # Name the DevRev part outright. Which part a Price Not Defined ticket
+            # belongs on is decided by ONE fact the DMS already holds — the customer
+            # type — so the DMS decides it rather than leaving the agent to infer it
+            # from a sentence. Routing this wrong means the ticket sits Unassigned
+            # with nobody asked to approve, and it went wrong intermittently while
+            # the rule lived only in the agent's instructions.
+            if not pr:
+                out["TicketPart"] = ("don:core:dvrv-us-1:devo/11CBDUMr66:feature/89"
+                                     if ctype == "CSD" else
+                                     "don:core:dvrv-us-1:devo/11CBDUMr66:feature/38")
+                out["TicketPartReason"] = (
+                    f"Price Not Defined for a {ctype} customer. "
+                    + ("CSD -> the Sales Institutional Team approval part."
+                       if ctype == "CSD" else
+                       "Not CSD -> the ordinary Price Not Defined part, no approval."))
             out["PriceMaster"] = {
                 "CustomerType": ctype,
                 "PriceDefined": bool(pr),
