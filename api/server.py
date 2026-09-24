@@ -460,6 +460,12 @@ def get_jobtype_diagnostics(p):
     # "already created" uses the source's own exclusion: STATUS not in (3,6)
     out["OpenJobCardExists"] = jc["STATUS"] not in (3, 6)
 
+    if want == 12 and jc["JOB_TYPE_ID"] == 31:
+        # The one permitted change. feature/59 is what routes it to the ASM queue.
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/59"
+        out["TicketPartReason"] = ("Job Type Change Request: Paid Service (31) to Running "
+                                   "Repair (12). Gated on ASM approval.")
+
     if want is None:
         out["BotSummary"] = ("[[S]]The job card on frame " + frame + " is currently " +
             str(out["CurrentJobType"]) + ". Enabled job types for this model: " +
@@ -474,6 +480,8 @@ def get_jobtype_diagnostics(p):
     if row is None or not row["ACTIVE"]:
         # Branch C — the model does not carry it, or carries it switched off.
         out["Branch"] = "C_MANUAL_VS_DMS"
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/60"
+        out["TicketPartReason"] = "Job Type Not Listing — manual versus DMS conflict."
         out["BotSummary"] = ("[[S]]" + label + " is not enabled for this model in the DMS. If "
             "the dealer manual says it should be, that is a conflict between the manual and the "
             "DMS configuration and needs an L1 ticket to investigate — it is not something to "
@@ -497,6 +505,8 @@ def get_jobtype_diagnostics(p):
 
     if beyond_km or beyond_days:
         out["Branch"] = "B_BEYOND_ELIGIBILITY"
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/60"
+        out["TicketPartReason"] = "Job Type Not Listing — beyond eligibility, normally no ticket."
         why = []
         if beyond_km:   why.append(f"{jc['CURRENT_KM']} km against a limit of {km_limit} km")
         if beyond_days: why.append(f"{days} days since sale against a limit of {day_limit} days")
@@ -505,6 +515,8 @@ def get_jobtype_diagnostics(p):
             "correctly, so no ticket is needed.[[/S]]")
     else:
         out["Branch"] = "A_WITHIN_ELIGIBILITY"
+        out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/60"
+        out["TicketPartReason"] = "Job Type Not Listing — within eligibility, needs an L1 ticket."
         out["BotSummary"] = ("[[S]]" + label + " IS enabled for this model and the vehicle is "
             "within eligibility (" + str(jc["CURRENT_KM"]) + " km against a limit of " +
             str(km_limit) + " km). If it still does not list, that needs an L1 ticket with "
