@@ -497,6 +497,75 @@ def get_jobtype_diagnostics(p):
     return 200, "Success", out
 
 
+
+def update_amc_validity_dates(body, idem_key=None):
+    """
+    AMC Scenario 1, step 4 — the ONE write in the AMC use case.
+
+    Today this is a raw SQL UPDATE on the AMC table with no REST route, so the
+    wrapper does what a raw UPDATE cannot: it refuses on a closed or cancelled
+    AMC, captures a before/after snapshot for the audit trail, and reads the row
+    back so the caller never has to trust that the write landed.
+
+    VALID_FROM = today, VALID_TILL = today + one year, per the source.
+    """
+    amc_no = (body.get("AMC_NO") or "").strip()
+    dealer, branch = body.get("DEALER_ID"), body.get("BRANCH_ID")
+
+    rows = q("SELECT * FROM MDMS_AMC WHERE TRIM(AMC_NO)=? AND ACTIVE=1", (amc_no,))
+    if not rows:
+        audit("AMC/UpdateAMCValidityDates", "NOT_FOUND", dealer=dealer, branch=branch,
+              key=idem_key, detail=f"no AMC {amc_no}")
+        return 200, "AMC not found", {"Changed": False, "AmcNo": amc_no}
+    amc = rows[0]
+
+    # The guard the SOP puts before the write. A raw UPDATE has no such guard,
+    # which is exactly why this is a wrapper and not a passthrough.
+    if amc["STATUS"] != 0:
+        label = {1: "Closed", 2: "Cancelled"}.get(amc["STATUS"], "not Open")
+        audit("AMC/UpdateAMCValidityDates", "REFUSED", dealer=dealer, branch=branch,
+              key=idem_key, detail=f"AMC {amc_no} is {label}")
+        return 200, "AMC is not Open", {
+            "Changed": False, "AmcNo": amc_no, "StatusLabel": label,
+            "BotSummary": "[[S]]AMC " + amc_no + " is " + label + ", not Open. The validity "
+                          "dates cannot be changed on an AMC in this state — a new AMC has to "
+                          "be created instead.[[/S]]"}
+
+    before = {"VALID_FROM": amc["VALID_FROM"], "VALID_TILL": amc["VALID_TILL"]}
+    today = dt.date.today()
+    new_from, new_till = str(today), str(today.replace(year=today.year + 1))
+
+    if idem_key:
+        seen = q("SELECT * FROM MDMS_API_IDEMPOTENCY WHERE IDEMPOTENCY_KEY=?", (idem_key,))
+        if seen:
+            return 200, "Replayed", {"Changed": False, "Replayed": True, "AmcNo": amc_no,
+                                     "VALID_FROM": new_from, "VALID_TILL": new_till}
+        exec_write("""INSERT INTO MDMS_API_IDEMPOTENCY
+                      (IDEMPOTENCY_KEY, ENDPOINT, DEALER_ID, REQUEST_HASH, RESPONSE_JSON, CREATED_AT)
+                      VALUES (?,?,?,?,?,?)""",
+                   (idem_key, "AMC/UpdateAMCValidityDates", dealer,
+                    hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest(), "",
+                    dt.datetime.now().isoformat(timespec="seconds")))
+
+    exec_write("UPDATE MDMS_AMC SET VALID_FROM=?, VALID_TILL=? WHERE TRIM(AMC_NO)=?",
+               (new_from, new_till, amc_no))
+
+    # Read it BACK. A write that was accepted is not a write that landed.
+    after = q("SELECT VALID_FROM, VALID_TILL FROM MDMS_AMC WHERE TRIM(AMC_NO)=?", (amc_no,))[0]
+    ok = after["VALID_FROM"] == new_from and after["VALID_TILL"] == new_till
+    audit("AMC/UpdateAMCValidityDates", "OK" if ok else "ERROR", dealer=dealer, branch=branch,
+          key=idem_key, detail=f"{amc_no}: {before} -> {dict(after)}")
+    return 200, "Success", {
+        "Changed": ok, "VerifiedFromDatabase": ok, "AmcNo": amc_no,
+        "Before": before, "After": dict(after),
+        "BotSummary": ("[[S]]The validity period on AMC " + amc_no + " is now " + new_from +
+                       " to " + new_till + ", confirmed by reading the record back. If a job "
+                       "card is already open on this vehicle it must be refreshed so the new "
+                       "benefits, parts and labour apply.[[/S]]") if ok else
+                      ("[[S]]The update to AMC " + amc_no + " did not save. Nothing has been "
+                       "changed.[[/S]]")}
+
+
 # GET routes: path -> (handler, params whose value must match the token claims)
 GET_ROUTES = {
     f"{BASE}/VehicleInvoice/GetInvoiceDiagnostics": get_invoice_diagnostics,
@@ -580,6 +649,17 @@ class Handler(BaseHTTPRequestHandler):
 
         if u.path == f"{BASE}/Login/ServiceTokenForDealer":
             return self._reply(*service_token_for_dealer(self.headers, body))
+
+        if u.path == f"{BASE}/AMC/UpdateAMCValidityDates":
+            _, err = self._auth(body.get("DEALER_ID"), body.get("BRANCH_ID"), body.get("USER_ID"))
+            if err:
+                audit("AMC/UpdateAMCValidityDates", "UNAUTHORIZED", dealer=body.get("DEALER_ID"),
+                      branch=body.get("BRANCH_ID"), user=body.get("USER_ID"), detail=err)
+                return self._reply(401, err, None)
+            try:
+                return self._reply(*update_amc_validity_dates(body, self.headers.get("Idempotency-Key")))
+            except Exception as e:                               # noqa: BLE001
+                return self._reply(500, f"Server error: {e}", None)
 
         if u.path != f"{BASE}/VehicleInvoice/UpdateDiscountValue":
             return self._reply(500, f"No such route: {u.path}", None)
