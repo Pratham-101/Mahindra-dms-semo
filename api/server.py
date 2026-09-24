@@ -791,7 +791,7 @@ def db_browser(p):
     errhtml = ('<div class=err>' + err + '</div>') if err else ''
     return ("<!doctype html><meta charset=utf-8><title>OnlineDMS — tables</title>" + _CSS +
             "<div class=w><h1>OnlineDMS — the mock database</h1>"
-            "<p class=sub>SQLite copy of the Vehicle Invoice slice. "
+            "<p class=sub>SQLite copy of the Vehicle Invoice, AMC Issues and Job Type Issues slices. "
             "<a class=back href='/'>&larr; API console</a></p>"
             "<div class=tabs>" + tabs + "</div>" + errhtml +
             "<form method=get action='/db'>"
@@ -801,7 +801,7 @@ def db_browser(p):
             "&nbsp;&middot;&nbsp; highlighted rows are the SOP walkthrough</div>" + grid + "</div>")
 
 
-INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS</title>
+INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS Dealer BOT</title>
 <style>
  body{font:15px/1.6 -apple-system,Helvetica,Arial;margin:0;background:#f2f4f7;color:#12171e}
  .w{max-width:1000px;margin:0 auto;padding:44px 26px 70px}
@@ -820,8 +820,8 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS</title>
  th{background:#e7ecf1;font-size:11.5px;letter-spacing:1px;text-transform:uppercase;color:#68737f}
 </style>
 <div class=w>
-<h1>Mock OnlineDMS — Vehicle Invoice</h1>
-<p class=sub>Stand-in for the TVS DMS backend, built so the API contract can be settled and tested before TVS writes any code.</p>
+<h1>Mock OnlineDMS</h1>
+<p class=sub>Stand-in for the TVS DMS backend, built so the API contract can be settled and tested before TVS writes any code. Three use cases are live here: Vehicle Invoice, AMC Issues and Job Type Issues.</p>
 <div class=warn><b>Synthetic data.</b> Not a TVS dump. Table and column names are taken verbatim from the Vehicle Invoice SOP; the rows are generated and anchored on the SOP's own sample values.</div>
 
 <h2>Try it</h2>
@@ -843,6 +843,37 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS</title>
 
 <div class=ep><span class="m post">POST</span><code>/OnlineSalesAPI/VehicleInvoice/UpdateDiscountValue</code>
  <p class=d>The only write. Idempotent via <code>Idempotency-Key</code>, and it re-reads the row before answering.</p></div>
+
+<h2>AMC Issues</h2>
+<div class=ep><span class="m get">GET</span><code>/OnlineSalesAPI/AMC/GetAMCDiagnostics</code>
+ <p class=d>The AMC entry step and every scenario guard in one call: finds the AMC by number,
+ confirms the frame belongs to the same vehicle, reads <code>STATUS</code> (0 Open · 1 Closed ·
+ 2 Cancelled), and resolves the dealership holding it <b>together with whether that dealership is
+ still active</b> &mdash; the single fact that decides all three branches of the close/cancel
+ scenario. Returns <code>BotSummary</code>.</p>
+ <p class=d>Params: <code>DealerID</code> · <code>BranchID</code> · <code>UserId</code> ·
+ <code>AmcNo</code> · <code>FrameNo</code> (optional, but it is what catches an AMC number that
+ belongs to a different vehicle).</p></div>
+
+<div class=ep><span class="m post">POST</span><code>/OnlineSalesAPI/AMC/UpdateAMCValidityDates</code>
+ <p class=d>The one write in the AMC use case. Sets <code>VALID_FROM</code> to today and
+ <code>VALID_TILL</code> to today plus one year. <b>Refuses unless the AMC is Open</b>, snapshots
+ before and after into the audit trail, honours <code>Idempotency-Key</code>, and reads the row
+ back so the caller never has to trust that the write landed.</p>
+ <p class=d>Body: <code>AMC_NO</code> · <code>DEALER_ID</code> · <code>BRANCH_ID</code> ·
+ <code>USER_ID</code>. Today this is a raw SQL UPDATE with no REST route on the real DMS.</p></div>
+
+<h2>Job Type Issues</h2>
+<div class=ep><span class="m get">GET</span><code>/OnlineSalesAPI/JobType/GetJobTypeDiagnostics</code>
+ <p class=d>Reads the job card for a frame, then the job types enabled for that model with their
+ eligibility fields (<code>VALID_KM</code>, <code>GRACE_KM</code>, <code>VALID_DAYS</code>,
+ <code>GRACE_DAYS</code>), and names which branch applies: within eligibility, beyond eligibility,
+ or a manual-versus-DMS conflict. <code>PopulateJobCardDetailsAngular</code> returns the job type
+ but <b>not</b> model-level eligibility, which is why this wrapper exists.</p>
+ <p class=d>Params: <code>DealerID</code> · <code>BranchID</code> · <code>UserId</code> ·
+ <code>FrameNo</code> · <code>RequestedJobTypeId</code> (31 Paid Service, 12 Running Repair;
+ omit to list what is enabled). Also returns <code>OpenJobCardExists</code>, which excludes
+ <code>STATUS</code> 3 and 6 exactly as the source does.</p></div>
 
 <div class=ep><span class="m get">GET</span><code>/OnlineSalesAPI/AuditTrail</code>
  <p class=d>Every call, including unauthorised attempts and replays.</p>
