@@ -888,17 +888,62 @@ _CSS = """<style>
  td{font-family:ui-monospace,Menlo,monospace}
  tr:nth-child(even) td{background:#fafbfc}
  .hit td{background:#fff8e1 !important}
+ /* A row the bot has just written. Loud on purpose - the whole point is that
+    someone watching over your shoulder sees it change. */
+ .fresh td{background:#d8f5e3 !important;box-shadow:inset 3px 0 0 #0f6b47}
+ .live{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 15px;
+   border-radius:9px;border:1px solid #cfe0f7;background:#eef5fe}
+ .live .dot{width:9px;height:9px;border-radius:50%;background:#0f6b47;animation:pulse 1.4s infinite}
+ @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+ .live b{font-size:13px}
+ .live .w8{color:#68737f;font-size:12.5px}
+ .live a.btn{text-decoration:none;font:600 12.5px -apple-system,Helvetica,Arial;padding:6px 12px;
+   border-radius:7px;border:1px solid #b9d2f1;background:#fff;color:#0b5fc7}
+ .live a.btn.on{background:#0f6b47;border-color:#0f6b47;color:#fff}
+ .wrote{font:12.5px ui-monospace,Menlo,monospace;color:#12171e;background:#fff;border:1px solid #cfe0f7;
+   border-radius:7px;padding:8px 11px;margin:0 0 16px;overflow-x:auto;white-space:nowrap}
+ .wrote .t{color:#68737f}
+ .wrote .arrow{color:#0f6b47;font-weight:700}
  .err{background:#f8e4e4;color:#9c2a2a;padding:11px 14px;border-radius:8px;margin-bottom:14px}
  .note{color:#68737f;font-size:12.5px;margin-top:10px}
  a.back{color:#0b5fc7;text-decoration:none;font-size:13px}
 </style>"""
 
 
+def recent_writes(seconds=120):
+    """Writes from the audit trail, newest first, within the last `seconds`.
+
+    Every write is already audited with a before -> after snapshot, so the live
+    view does not need a second source of truth or any client-side state: what
+    changed, and when, is a SELECT.
+    """
+    cutoff = (dt.datetime.now() - dt.timedelta(seconds=seconds)).isoformat(timespec="seconds")
+    return q("""SELECT CALLED_AT, ENDPOINT, DEALER_ID, USER_ID, OUTCOME, DETAIL
+                FROM MDMS_API_AUDIT
+                WHERE CALLED_AT >= ? AND OUTCOME IN ('OK','REPLAYED')
+                  AND (ENDPOINT LIKE '%Update%' OR ENDPOINT LIKE '%Save%')
+                ORDER BY AUDIT_ID DESC LIMIT 12""", (cutoff,))
+
+
 def db_browser(p):
     table = p.get("t", "MDMS_VEHICLE_INVOICE")
     sql   = (p.get("q") or "").strip()
     limit = int(p.get("limit", "100"))
+    live  = p.get("live") == "1"
     counts = {t: q(f"SELECT COUNT(*) c FROM {t}")[0]["c"] for t in TABLES}
+
+    # Identifiers the bot has written to in the last two minutes. The audit DETAIL
+    # starts with the identifier for the AMC write ("AMC700033: {...} -> {...}");
+    # the invoice write records only the value change, so the invoice is taken from
+    # the endpoint's own row instead. Anything matched here gets flashed green.
+    writes = recent_writes()
+    fresh_ids = set()
+    for wr in writes:
+        d = (wr["DETAIL"] or "")
+        if ":" in d:
+            head = d.split(":", 1)[0].strip()
+            if head and " " not in head:
+                fresh_ids.add(head.upper())
 
     tabs = "".join(
         f'<a class="{"on" if t == table and not sql else ""}" href="/db?t={t}">{t} <span>{counts[t]}</span></a>'
@@ -923,9 +968,15 @@ def db_browser(p):
         head = "".join(f"<th>{c}</th>" for c in cols)
         body = ""
         for r in rows:
-            hit = "hit" if (str(r.get("INVOICE_NO", "")).strip() == "1152344"
-                            or r.get("CRM_REF_CUST_CODE") == "EMR150200007988RF4761") else ""
-            body += f'<tr class="{hit}">' + "".join(
+            ident = {str(r.get(k, "")).strip().upper() for k in ("AMC_NO", "INVOICE_NO", "JC_NO")}
+            if ident & fresh_ids:
+                cls = "fresh"
+            elif (str(r.get("INVOICE_NO", "")).strip() == "1152344"
+                  or r.get("CRM_REF_CUST_CODE") == "EMR150200007988RF4761"):
+                cls = "hit"
+            else:
+                cls = ""
+            body += f'<tr class="{cls}">' + "".join(
                 f"<td>{'' if r[c] is None else str(r[c])[:70]}</td>" for c in cols) + "</tr>"
         grid = f'<div class="scroll"><table><tr>{head}</tr>{body}</table></div>'
     else:
@@ -934,11 +985,36 @@ def db_browser(p):
     ph = "SELECT * FROM MDMS_VEHICLE_INVOICE WHERE DEALER_ID=13111"
     val = sql.replace('"', "&quot;")
     errhtml = ('<div class=err>' + err + '</div>') if err else ''
-    return ("<!doctype html><meta charset=utf-8><title>OnlineDMS — tables</title>" + _CSS +
+
+    # Live mode: re-render every 3 seconds so a write made by the bot appears on
+    # screen while the dealer is still in the conversation, with no click needed.
+    keep = f"t={table}" + (f"&q={urllib.parse.quote(sql)}" if sql else "")
+    refresh = '<meta http-equiv=refresh content="3">' if live else ''
+    livebar = (
+        '<div class=live>'
+        + ('<span class=dot></span><b>Live — refreshing every 3s</b>' if live
+           else '<b>Live view is off</b>')
+        + f'<span class=w8>read at {dt.datetime.now().strftime("%H:%M:%S")}</span>'
+        + (f'<a class="btn" href="/db?{keep}">Pause</a>' if live
+           else f'<a class="btn on" href="/db?{keep}&live=1">Go live</a>')
+        + '<span class=w8>A row written by the bot in the last 2 minutes is flashed green.</span>'
+        '</div>')
+
+    wrote = ""
+    for wr in writes:
+        d = (wr["DETAIL"] or "").replace("->", "<span class=arrow>&rarr;</span>")
+        wrote += (f'<div class=wrote><span class=t>{str(wr["CALLED_AT"])[11:19]}</span> &nbsp; '
+                  f'<b>{wr["ENDPOINT"]}</b> &nbsp; <span class=t>dealer {wr["DEALER_ID"]}</span>'
+                  f' &nbsp; {d}</div>')
+    if not wrote and live:
+        wrote = ('<div class=wrote><span class=t>no write in the last 2 minutes — ask the bot to '
+                 'change an AMC validity date and watch this space</span></div>')
+
+    return ("<!doctype html><meta charset=utf-8><title>OnlineDMS — tables</title>" + refresh + _CSS +
             "<div class=w><h1>OnlineDMS — the mock database</h1>"
             "<p class=sub>SQLite copy of the Vehicle Invoice, AMC Issues and Job Type Issues slices. "
             "<a class=back href='/'>&larr; API console</a></p>"
-            "<div class=tabs>" + tabs + "</div>" + errhtml +
+            "<div class=tabs>" + tabs + "</div>" + livebar + wrote + errhtml +
             "<form method=get action='/db'>"
             "<input name=q placeholder=\"" + ph + "\" value=\"" + val + "\">"
             "<button>Run</button></form>"
@@ -1034,7 +1110,12 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS
 <h2>Browse the data</h2>
 <div class=ep><span class="m get">GET</span><code>/db</code>
  <p class=d>All fifteen tables, row counts, and a read-only SQL box. The SOP walkthrough rows are highlighted.</p>
- <a class=try href="/db">open the database &rarr;</a></div>
+ <p class=d><b>Live view.</b> <code>/db?t=MDMS_AMC&amp;live=1</code> re-reads every 3 seconds and
+ flashes green any row the bot has written in the last two minutes, above a log of those writes
+ taken from the audit trail. Put it beside the dealer portal and the row changes on screen while
+ the conversation is still open &mdash; no refresh, nothing to click.</p>
+ <a class=try href="/db">open the database &rarr;</a>
+ <a class=try href="/db?t=MDMS_AMC&amp;live=1">watch AMC writes live &rarr;</a></div>
 
 <h2>Walk the SOP yourself</h2>
 <table>
