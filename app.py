@@ -92,8 +92,10 @@ class Router(BaseHTTPRequestHandler):
         out = b"{}"
         try:
             payload = json.loads(raw or b"{}")
-            if payload.get("type") == "verify" or "challenge" in payload:
-                out = json.dumps({"challenge": payload.get("challenge")}).encode()
+            # DevRev nests it: {"type":"verify","verify":{"challenge":"..."}}
+            ch = (payload.get("verify") or {}).get("challenge") or payload.get("challenge")
+            if ch:
+                out = json.dumps({"challenge": ch}).encode()
         except Exception:                                        # noqa: BLE001
             pass
         self.send_response(200)
