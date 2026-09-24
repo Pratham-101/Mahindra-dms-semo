@@ -34,7 +34,17 @@ def q(sql, args=()):
 # The service credential the DevRev side holds. It can ONLY mint a dealer-scoped
 # token — it can never read or write dealer data by itself. That separation is the
 # whole point: a leaked service credential still cannot read an invoice.
-SERVICE_CLIENTS = {"devrev-dealer-bot": "mock-service-secret-not-for-production"}
+# The service credential DevRev presents to mint a dealer-scoped token. It is read
+# from the environment so it can be rotated without a code change; the fallback is
+# the POC value, which is published in this repository and is therefore no secret at
+# all. Rotating it means setting SERVICE_CLIENT_SECRET on the host AND rebuilding the
+# skill workflows with the same value - see devrev/README.md, "Rotating the service
+# credential". Until that is done, treat this instance as open to anyone who reads
+# the repo. The data behind it is synthetic, which is the only reason that is tolerable.
+SERVICE_CLIENTS = {
+    os.environ.get("SERVICE_CLIENT_ID", "devrev-dealer-bot"):
+    os.environ.get("SERVICE_CLIENT_SECRET", "mock-service-secret-not-for-production"),
+}
 
 
 def audit(endpoint, outcome, client=None, dealer=None, branch=None, user=None, key=None, detail=None):
