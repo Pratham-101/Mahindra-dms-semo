@@ -716,8 +716,13 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("  %s\n" % (fmt % a))
 
 
+# Grouped by use case, then the two plumbing tables. The AMC and Job Type tables
+# were added with those use cases; leaving them out of this list is what made them
+# invisible in the browser even though the endpoints were reading them.
 TABLES = ["MDMS_VEHICLE_INVOICE","MDMS_BOOKING_PART","MDMS_MODEL_PART","MDMS_MODEL_SUBSIDY",
           "MDMS_VEHICLE_PRICE_MASTER","MDMS_CUSTOMER","MDMS_DEALER","MDMS_RTO",
+          "MDMS_AMC","MDMS_DEALERSHIP",
+          "MDMS_JOB_CARD","MDMS_JOB_TYPE","MDMS_MODEL_JOB_TYPE",
           "MDMS_API_AUDIT","MDMS_API_IDEMPOTENCY"]
 
 _CSS = """<style>
@@ -881,7 +886,7 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS
 
 <h2>Browse the data</h2>
 <div class=ep><span class="m get">GET</span><code>/db</code>
- <p class=d>All ten tables, row counts, and a read-only SQL box. The SOP walkthrough rows are highlighted.</p>
+ <p class=d>All fifteen tables, row counts, and a read-only SQL box. The SOP walkthrough rows are highlighted.</p>
  <a class=try href="/db">open the database &rarr;</a></div>
 
 <h2>Walk the SOP yourself</h2>
@@ -893,6 +898,26 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS
 <tr><td><code>KE190260DB</code> &rarr; <code>000030000300000029</code></td><td>part &rarr; model (TVS iQube S)</td></tr>
 <tr><td><code>KAR</code> &rarr; EMPS <code>5000</code></td><td>dealer state &rarr; subsidy</td></tr>
 <tr><td><code>EMR150200007988RF4761</code></td><td>an EMR code deliberately used on TWO invoices</td></tr>
+</table>
+
+<h2>Walk the AMC scenarios</h2>
+<table>
+<tr><th>Value</th><th>What it is</th></tr>
+<tr><td><code>AMC700001</code> &middot; <code>MD61311110T1H11100</code></td><td>STATUS 0 &mdash; Open. The only state the validity-date write accepts.</td></tr>
+<tr><td><code>AMC700005</code> &middot; <code>MD61311114T1H11104</code></td><td>STATUS 1 &mdash; Closed. Reopen is refused; there is no reopen path in the source.</td></tr>
+<tr><td><code>AMC700006</code> &middot; <code>MD61311115T1H11105</code></td><td>STATUS 2 &mdash; Cancelled. A date change against it is refused on status, not on permission.</td></tr>
+<tr><td><code>AMC700004</code> &middot; <code>MD61311113T1H11103</code></td><td>held by <code>DS90001</code>, a dealership with <code>ACTIVE = 0</code> &mdash; the inactive-dealership branch.</td></tr>
+<tr><td><code>AMC700001</code> + <code>WRONGFRAME999</code></td><td>frame that does not match the AMC &mdash; the guard that catches a mistyped number.</td></tr>
+</table>
+
+<h2>Walk the Job Type scenarios</h2>
+<table>
+<tr><th>Value</th><th>What it is</th></tr>
+<tr><td><code>MD61311110T1H11100</code></td><td>6,000 km against a 20,000 km limit &mdash; within eligibility, so a job type that will not list is an L1 ticket.</td></tr>
+<tr><td><code>MD61311115T1H11105</code></td><td>51,000 km &mdash; beyond eligibility, which is the answer rather than a ticket.</td></tr>
+<tr><td><code>31</code> &rarr; <code>12</code></td><td>Paid Service to Running Repair &mdash; the one permitted change, and it needs ASM approval.</td></tr>
+<tr><td><code>9</code> on model <code>000030000300000029</code></td><td>Insurance Claim with <code>ACTIVE = 0</code> &mdash; enabled in the manual, off in the DMS.</td></tr>
+<tr><td>STATUS <code>3</code> and <code>6</code></td><td>excluded from &ldquo;an open job card exists&rdquo;, exactly as the source excludes them.</td></tr>
 </table>
 </div>"""
 
