@@ -920,7 +920,14 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS
  scenario. Returns <code>BotSummary</code>.</p>
  <p class=d>Params: <code>DealerID</code> · <code>BranchID</code> · <code>UserId</code> ·
  <code>AmcNo</code> · <code>FrameNo</code> (optional, but it is what catches an AMC number that
- belongs to a different vehicle).</p></div>
+ belongs to a different vehicle) · <code>Scenario</code>.</p>
+ <p class=d><b><code>Scenario</code> decides the ruling.</b> Five scenarios share this lookup, so
+ the caller says which one the dealer is in: <code>validity</code> · <code>reopen</code> ·
+ <code>close</code> · <code>statuschange</code>. Each returns its own sentence and its own
+ <code>TicketPart</code>. Omit it and the answer states the facts and rules on nothing &mdash;
+ which is deliberate: answering the wrong scenario confidently is worse than not answering.
+ Without it a dealer asking to <i>reopen</i> a closed AMC was told the <i>validity dates</i>
+ cannot be changed.</p></div>
 
 <div class=ep><span class="m post">POST</span><code>/OnlineSalesAPI/AMC/UpdateAMCValidityDates</code>
  <p class=d>The one write in the AMC use case. Sets <code>VALID_FROM</code> to today and
