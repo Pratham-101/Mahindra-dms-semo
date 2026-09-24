@@ -913,7 +913,7 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS
 <h2>Walk the Job Type scenarios</h2>
 <table>
 <tr><th>Value</th><th>What it is</th></tr>
-<tr><td><code>MD61311110T1H11100</code></td><td>6,000 km against a 20,000 km limit &mdash; within eligibility, so a job type that will not list is an L1 ticket.</td></tr>
+<tr><td><code>MD61311110T1H11100</code></td><td>6,000 km against a 22,000 km limit (<code>VALID_KM</code> 20,000 + <code>GRACE_KM</code> 2,000) &mdash; within eligibility, so a job type that will not list is an L1 ticket.</td></tr>
 <tr><td><code>MD61311115T1H11105</code></td><td>51,000 km &mdash; beyond eligibility, which is the answer rather than a ticket.</td></tr>
 <tr><td><code>31</code> &rarr; <code>12</code></td><td>Paid Service to Running Repair &mdash; the one permitted change, and it needs ASM approval.</td></tr>
 <tr><td><code>9</code> on model <code>000030000300000029</code></td><td>Insurance Claim with <code>ACTIVE = 0</code> &mdash; enabled in the manual, off in the DMS.</td></tr>
