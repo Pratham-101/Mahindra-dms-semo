@@ -209,11 +209,20 @@ def _bot_summary(d):
     state = (d.get("Dealer") or {}).get("STATE_ID") or "this state"
 
     if pm and not pm.get("PriceDefined"):
+        csd = pm.get("CustomerType") == "CSD"
         who = ("the Sales Institutional Team must approve before a CSD price can be created"
-               if pm.get("CustomerType") == "CSD"
-               else "the dealer can create the price in Vehicle Price Master directly")
+               if csd else "the dealer can create the price in Vehicle Price Master directly")
+        # Name the article to read. The agent cannot set a part — DevRev files the
+        # ticket against whichever article was retrieved — and left to infer it from
+        # the sentence it read the Individual article for CSD customers every time.
+        # Saying it in the DMS's own sentence is the one channel that is always relayed.
+        art = ("Scenario 6 Path A: Price Not Defined for a CSD customer" if csd
+               else "Scenario 6 Path B: Price Not Defined for an Individual customer")
         return (f"No {pm.get('CustomerType')} price is defined for {model} in {state}. "
-                f"Per the SOP, {who}.")
+                f"Per the SOP, {who}. "
+                f"[[ACTION: before escalating, read the knowledge article \"{art}\" — "
+                f"the ticket is filed against the article you read, and this is a "
+                f"{pm.get('CustomerType')} customer.]]")
 
     if sub.get("Eligible"):
         # DISC_VALUE is what is ACTUALLY on the invoice; EMPS is only the entitlement.
