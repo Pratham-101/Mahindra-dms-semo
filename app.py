@@ -19,7 +19,7 @@ Neither child is modified in any way that changes its behaviour - the point of
 a proxy rather than a merge is that the demo logic stays byte-identical to what
 was tested locally.
 """
-import os, signal, subprocess, sys, threading, time, urllib.error, urllib.request
+import json, os, signal, subprocess, sys, threading, time, urllib.error, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE      = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +29,8 @@ AUTH_PORT = int(os.environ.get("AUTH_PORT", "8899"))
 # Paths the DMS API owns. /db is its SQL table browser — the screen that shows the
 # data behind every answer, which is half the point of the demo.
 API_PATHS = ("/OnlineSalesAPI", "/db")
+WEBHOOK_PATH = "/devrev-webhook"
+WEBHOOK_LOG  = os.path.join(HERE, "webhook.log")
 
 # Headers that belong to the hop, not the message. Forwarding these corrupts the
 # response - a Content-Length copied from the child fights the one we write.
@@ -66,7 +68,43 @@ class Router(BaseHTTPRequestHandler):
     def _target(self):
         return API_PORT if self.path.startswith(API_PATHS) else AUTH_PORT
 
+    # ── DevRev webhook sink ──────────────────────────────────────────────────
+    # ai-agents.events.execute-async delivers its result to a webhook rather than
+    # returning it, so a public endpoint is required to observe what an agent
+    # invoked on an existing conversation can actually see. POST appends the raw
+    # body to a log; GET returns the log. DevRev verifies a new webhook by posting
+    # a challenge that must be echoed back, which the first branch handles.
+    def _webhook(self):
+        if self.command == "GET":
+            try:
+                body = open(WEBHOOK_LOG, "rb").read()
+            except FileNotFoundError:
+                body = b"(nothing received yet)"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers(); self.wfile.write(body); return
+
+        n = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(n) if n else b"{}"
+        with open(WEBHOOK_LOG, "ab") as fh:
+            fh.write(b"\n===== " + time.strftime("%H:%M:%S").encode() + b" =====\n" + raw)
+        out = b"{}"
+        try:
+            payload = json.loads(raw or b"{}")
+            if payload.get("type") == "verify" or "challenge" in payload:
+                out = json.dumps({"challenge": payload.get("challenge")}).encode()
+        except Exception:                                        # noqa: BLE001
+            pass
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(out)))
+        self.end_headers(); self.wfile.write(out)
+
     def _proxy(self):
+        if self.path.split("?")[0] == WEBHOOK_PATH:
+            return self._webhook()
+
         n = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(n) if n else None
         url = f"http://127.0.0.1:{self._target()}{self.path}"
