@@ -462,9 +462,19 @@ def get_amc_diagnostics(p):
     elif scenario == "validity":
         out["TicketPart"] = "don:core:dvrv-us-1:devo/11CBDUMr66:feature/54"
         out["TicketPartReason"] = "AMC S1 — Validity Date Change"
-        out["BotSummary"] = S(head + ", valid " + dates + ". The dates can be updated." ) \
-            if out["IsOpen"] else S(head + ", not Open. The validity dates cannot be changed on "
-            "an AMC in this state — a new AMC has to be created instead.")
+        if not out["IsOpen"]:
+            out["BotSummary"] = S(head + ", not Open. The validity dates cannot be changed on "
+                "an AMC in this state — a new AMC has to be created instead.")
+        elif not own:
+            # Ownership is already known here, so say it now. Saying "the dates can be
+            # updated" and then refusing the write two turns later reads as the bot
+            # changing its mind, and the dealer has already been told yes.
+            out["BotSummary"] = S(head + ", valid " + dates + ", but it is held by " + dsname +
+                " — not your dealership. The dates have to be changed by the dealership the "
+                "AMC is open under, so this one cannot be done from here.")
+        else:
+            out["BotSummary"] = S(head + " under your own dealership, valid " + dates +
+                ". The dates can be updated.")
 
     # Scenario 4 — three branches, decided by who holds it and whether they are active.
     elif scenario in ("close", "cancel", "closecancel"):
