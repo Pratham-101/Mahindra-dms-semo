@@ -997,7 +997,9 @@ def db_browser(p):
         + f'<span class=w8>read at {dt.datetime.now().strftime("%H:%M:%S")}</span>'
         + (f'<a class="btn" href="/db?{keep}">Pause</a>' if live
            else f'<a class="btn on" href="/db?{keep}&live=1">Go live</a>')
-        + '<span class=w8>A row written by the bot in the last 2 minutes is flashed green.</span>'
+        + '<span class=w8>A row written by the bot in the last 2 minutes is flashed green. '
+          'Writes live in the container only &mdash; a redeploy restores the committed database, '
+          'which is the reset between demos.</span>'
         '</div>')
 
     wrote = ""
@@ -1114,6 +1116,12 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS
  flashes green any row the bot has written in the last two minutes, above a log of those writes
  taken from the audit trail. Put it beside the dealer portal and the row changes on screen while
  the conversation is still open &mdash; no refresh, nothing to click.</p>
+ <p class=d><b>Two things to know before demonstrating a write.</b> The validity write sets
+ <code>VALID_FROM</code> to <i>today</i>, so running it twice on the same AMC on the same day
+ shows two identical dates and looks like nothing happened &mdash; use an AMC whose dates are
+ still original. And writes are held in the container only: a redeploy restores the committed
+ database, which is how you reset between demos, and also why a change must never be presented
+ as permanent.</p>
  <a class=try href="/db">open the database &rarr;</a>
  <a class=try href="/db?t=MDMS_AMC&amp;live=1">watch AMC writes live &rarr;</a></div>
 
