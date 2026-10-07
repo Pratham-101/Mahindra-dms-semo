@@ -398,7 +398,7 @@
         <div class="rf" id="cRef">&mdash;</div>
       </div>
     </div>
-    <div class="pfoot">Your booking is held at the showroom under the reference above.</div>
+    <div class="pfoot" id="pfoot">Speak to our assistant to book a test ride.</div>
   </div>
 </div>
 
@@ -455,14 +455,22 @@ async function start() {
     });
   } catch (e) {
     const msg = String(e?.message || e);
+    const blocked = /closed|socket|network/i.test(msg);
+    // Short and calm on screen - a client may be watching this panel. The useful
+    // detail goes to the console, where whoever is running the demo can find it.
+    if (blocked) {
+      console.error(
+        "Voice connection refused. https to elevenlabs.io is permitted but the websocket "
+        + "upgrade is not, which is how corporate web filters (Zscaler, Netskope and "
+        + "similar) present. It needs *.elevenlabs.io allowlisted for websocket and "
+        + "exempt from TLS inspection, or a machine that is not behind the filter. "
+        + "Underlying error: " + msg);
+    }
     errEl.textContent =
       /denied|NotAllowed|Permission|dismissed/i.test(msg)
         ? "Microphone is blocked. Allow it from the padlock in the address bar, then tap again."
-      : /closed|socket|network/i.test(msg)
-        ? "This network is blocking the voice connection. Corporate web filters "
-          + "(Zscaler, Netskope and similar) permit https to elevenlabs.io but stop "
-          + "the websocket upgrade, which fails exactly like this. It needs "
-          + "allowlisting, or a machine that is not behind the filter."
+      : blocked
+        ? "The assistant is unavailable on this network. Please call your nearest showroom."
         : msg;
     setState("idle", "Tap to talk");
     convo = null;
@@ -507,6 +515,7 @@ setInterval(async () => {
   $("cRef").textContent   = fresh.TR_NO;
   $("conf").classList.add("on");
   $("hsub").textContent = "Booking confirmed";
+  $("pfoot").textContent = "Your slot is held at the showroom under this reference.";
 }, 2000);
 </script>
 </body>
