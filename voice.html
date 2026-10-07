@@ -147,7 +147,13 @@
 </div>
 
 <!-- ElevenLabs conversational widget. agent-id is substituted at deploy time. -->
-<elevenlabs-convai agent-id="agent_3701m4bcvpfse72t0rvjx5g3skqn"></elevenlabs-convai>
+<!-- connection-type is pinned to websocket on purpose. The widget defaults to
+     WebRTC, and on a network that blocks it the session dies with "connection
+     closed unexpectedly before session could be established" - which reads like
+     a broken agent. Connecting to the conversation socket directly proved the
+     backend session establishes fine, so the transport was the problem. -->
+<elevenlabs-convai agent-id="agent_3701m4bcvpfse72t0rvjx5g3skqn"
+                   connection-type="websocket"></elevenlabs-convai>
 <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
 
 <script>
