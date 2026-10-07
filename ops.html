@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test Ride Operations</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{--bg:#0d1117;--panel:#151b24;--line:#232b37;--text:#e8edf4;--muted:#8b97a8;--ok:#1f9d6b;--hot:#E8471F}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);padding:34px 28px;
+       font:15px/1.6 Inter,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{font:600 20px/1.2 Inter;margin:0 0 5px}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px}
+  .sub code{font:12.5px ui-monospace,Menlo,monospace;color:#b8c5d6}
+  .bar{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--muted);font-size:12.5px}
+  .blip{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:bl 1.9s infinite}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:.25}}
+  table{width:100%;border-collapse:collapse;font-size:13.6px}
+  th{text-align:left;font:600 11px/1 Inter;letter-spacing:.13em;text-transform:uppercase;
+     color:var(--muted);padding:0 12px 11px;border-bottom:1px solid var(--line)}
+  td{padding:13px 12px;border-bottom:1px solid var(--line)}
+  tr.fresh td{background:rgba(31,157,107,.09)}
+  .ref{font:600 13px/1 ui-monospace,Menlo,monospace;color:var(--ok)}
+  .muted{color:var(--muted)}
+  .empty{color:var(--muted);text-align:center;padding:48px 10px;border:1px dashed var(--line);
+         border-radius:12px;margin-top:18px}
+  .tot{margin-top:18px;color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Test ride operations</h1>
+  <p class="sub">Internal view of <code>MDMS_TEST_RIDE</code>. Not part of the customer demo &mdash;
+  the customer sees only their own confirmation, in the assistant panel on the product page.</p>
+  <div class="bar"><span class="blip"></span>Polling <code>GET /OnlineSalesAPI/TestRide/RecentBookings</code> every 2s</div>
+  <div id="host"></div>
+  <div class="tot" id="tot"></div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var host=document.getElementById("host"), tot=document.getElementById("tot");
+  var seen=Object.create(null), first=true;
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function pretty(d){var p=String(d||"").split("-");if(p.length!==3)return esc(d);
+    var t=new Date(+p[0],+p[1]-1,+p[2]);return isNaN(t)?esc(d):
+      t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});}
+  function render(list){
+    if(!list.length){host.innerHTML='<div class="empty">No test rides booked yet.</div>';
+      tot.textContent="";first=false;return;}
+    var h='<table><thead><tr><th>Reference</th><th>Model</th><th>When</th>'+
+          '<th>Showroom</th><th>Customer</th><th>Status</th></tr></thead><tbody>';
+    list.forEach(function(b){
+      var isNew=!first&&!seen[b.TR_NO]; seen[b.TR_NO]=1;
+      h+='<tr class="'+(isNew?"fresh":"")+'">'+
+         '<td class="ref">'+esc(b.TR_NO)+'</td>'+
+         '<td>'+esc(b.MODEL_DESC)+'</td>'+
+         '<td>'+pretty(b.SLOT_DATE)+', '+esc(b.SLOT_TIME)+'</td>'+
+         '<td class="muted">'+esc(b.SHOWROOM)+'</td>'+
+         '<td>'+esc(b.CUSTOMER_NAME)+' <span class="muted">'+esc(b.MOBILE_NO)+'</span></td>'+
+         '<td class="muted">'+esc(b.STATUS)+'</td></tr>';
+    });
+    host.innerHTML=h+'</tbody></table>';
+    tot.textContent=list.length+" booking"+(list.length===1?"":"s")+" shown. Mobile numbers are masked server-side.";
+    first=false;
+  }
+  function poll(){
+    fetch("/OnlineSalesAPI/TestRide/RecentBookings?limit=25",{cache:"no-store"})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(j){var l=j&&j.data&&j.data.Bookings; if(Array.isArray(l)) render(l);})
+      .catch(function(){});
+  }
+  poll(); setInterval(poll,2000);
+})();
+</script>
+</body>
+</html>

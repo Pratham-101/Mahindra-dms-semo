@@ -3,224 +3,509 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TVS Apache RTR 310 — Book a Test Ride</title>
+<title>TVS Apache RTR 310</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
 <style>
   :root{
-    --ink:#0b0e13; --panel:#141922; --panel-2:#1b212c; --line:#262e3b;
-    --text:#eef2f7; --muted:#97a3b4;
-    --tvs:#0C4DA2;            /* TVS blue */
-    --hot:#E8471F;            /* Apache red */
-    --ok:#1f9d6b; --warn:#d99a22;
+    --paper:#ffffff; --surface:#f4f6f9; --ink:#0d1117; --ink-2:#161c25;
+    --line:#e2e7ee; --text:#11161d; --muted:#5d6876;
+    --tvs:#0C4DA2; --hot:#E8471F; --ok:#15855c;
+    --wrap:1240px;
   }
   *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;background:var(--ink);color:var(--text);
-    font:15px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;
-  }
-  .shell{display:grid;grid-template-columns:1fr;min-height:100vh}
-  @media(min-width:1080px){ .shell{grid-template-columns:1.35fr .95fr} }
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--text);
+       font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 28px}
+  h1,h2,h3{text-wrap:balance;margin:0}
+  a{color:inherit}
 
-  /* ── left: the brand side ─────────────────────────────────────────── */
-  .stage{position:relative;padding:38px 42px 44px;display:flex;flex-direction:column;
-         background:
-           radial-gradient(1100px 620px at 12% -8%, rgba(12,77,162,.30), transparent 62%),
-           radial-gradient(760px 520px at 92% 108%, rgba(232,71,31,.20), transparent 60%),
-           var(--ink);
-         overflow:hidden}
-  .stage::after{content:"";position:absolute;inset:auto -10% -42% -10%;height:60%;
-                background:radial-gradient(60% 100% at 50% 0,rgba(255,255,255,.05),transparent 70%)}
-  .brandrow{display:flex;align-items:center;gap:14px;margin-bottom:auto}
-  .logo{font:700 20px/1 Barlow Condensed,Inter;letter-spacing:.22em;color:#fff}
-  .logo span{color:var(--hot)}
-  .pill{font:600 11px/1 Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
-        border:1px solid var(--line);border-radius:999px;padding:6px 11px}
+  /* header */
+  header{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.93);
+         backdrop-filter:saturate(1.6) blur(10px);border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:center;gap:30px;height:66px}
+  .logo{font:700 22px/1 Barlow Condensed,Inter;letter-spacing:.2em;text-decoration:none}
+  .logo i{font-style:normal;color:var(--hot)}
+  .nav ul{list-style:none;display:flex;gap:26px;margin:0;padding:0}
+  .nav a.lnk{text-decoration:none;color:var(--muted);font-size:14.5px;font-weight:500;
+             padding:6px 0;border-bottom:2px solid transparent}
+  .nav a.lnk:hover{color:var(--text);border-bottom-color:var(--hot)}
+  .nav .spacer{margin-left:auto}
+  .ghost{border:1px solid var(--line);border-radius:8px;padding:9px 16px;font-size:14px;
+         font-weight:600;text-decoration:none;color:var(--text)}
+  .ghost:hover{border-color:var(--muted)}
+  @media(max-width:900px){.nav ul,.ghost{display:none}}
 
-  .kicker{font:600 12px/1 Inter;letter-spacing:.2em;text-transform:uppercase;color:var(--hot);margin:0 0 12px}
-  h1{font:700 clamp(40px,6.4vw,74px)/0.94 Barlow Condensed,Inter;letter-spacing:.012em;
-     margin:0 0 14px;text-transform:uppercase;text-wrap:balance}
-  h1 em{font-style:normal;color:var(--hot)}
-  .lede{color:var(--muted);max-width:52ch;margin:0 0 26px;font-size:16px}
+  /* hero */
+  .hero{background:
+      radial-gradient(1100px 600px at 78% 8%,rgba(232,71,31,.22),transparent 62%),
+      radial-gradient(900px 560px at 8% 96%,rgba(12,77,162,.3),transparent 60%),
+      var(--ink);
+    color:#fff;padding:74px 0 0;overflow:hidden}
+  .hero .wrap{display:grid;gap:40px;align-items:center}
+  @media(min-width:980px){.hero .wrap{grid-template-columns:1.05fr .95fr}}
+  .eyebrow{font:600 12px/1 Inter;letter-spacing:.22em;text-transform:uppercase;
+           color:var(--hot);margin:0 0 14px}
+  .hero h1{font:700 clamp(50px,7.4vw,96px)/0.9 Barlow Condensed,Inter;
+           text-transform:uppercase;letter-spacing:.01em}
+  .hero h1 span{color:var(--hot)}
+  .hero p.lede{color:#aeb9c7;font-size:17px;max-width:46ch;margin:18px 0 0}
+  .price{margin:26px 0 0;font-size:14px;color:#8d99a9}
+  .price b{display:block;font:700 34px/1.1 Barlow Condensed,Inter;color:#fff;letter-spacing:.01em}
+  .herocta{display:flex;gap:13px;flex-wrap:wrap;margin:26px 0 0}
+  .btn{border:0;cursor:pointer;border-radius:9px;padding:14px 24px;font:600 15px/1 Inter;white-space:nowrap;
+       text-decoration:none;display:inline-flex;align-items:center;gap:10px;
+       transition:transform .14s ease,box-shadow .14s ease,background .14s ease}
+  .btn.primary{background:var(--hot);color:#fff;box-shadow:0 10px 28px rgba(232,71,31,.32)}
+  .btn.primary:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(232,71,31,.4)}
+  .btn.onDark{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.26)}
+  .btn.onDark:hover{background:rgba(255,255,255,.08)}
+  .btn:focus-visible{outline:3px solid #fff;outline-offset:3px}
 
-  .specs{display:flex;gap:28px;flex-wrap:wrap;margin:0 0 30px;padding:18px 0;
-         border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-  .spec b{display:block;font:700 23px/1.1 Barlow Condensed,Inter;letter-spacing:.02em}
-  .spec span{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+  /* a typographic stand-in for the bike, no stock photography */
+  .plate{position:relative;aspect-ratio:4/3;display:grid;place-items:center;min-height:300px}
+  .plate .disc{position:absolute;width:76%;aspect-ratio:1;border-radius:50%;
+    background:conic-gradient(from 210deg,rgba(232,71,31,.34),rgba(12,77,162,.3),rgba(232,71,31,.34));
+    filter:blur(42px)}
+  .plate .num{position:relative;font:700 clamp(130px,20vw,250px)/0.78 Barlow Condensed,Inter;
+    letter-spacing:-.02em;background:linear-gradient(180deg,#fff 18%,rgba(255,255,255,.18));
+    -webkit-background-clip:text;background-clip:text;color:transparent;text-align:center}
+  .plate .num em{display:block;font-style:normal;font-size:.21em;letter-spacing:.42em;
+    color:#8fa0b4;-webkit-text-fill-color:#8fa0b4;margin-top:4px}
 
-  .cta{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .talk{display:inline-flex;align-items:center;gap:11px;border:0;cursor:pointer;
-        background:var(--hot);color:#fff;font:600 15px/1 Inter;letter-spacing:.01em;
-        padding:16px 24px;border-radius:12px;box-shadow:0 10px 30px rgba(232,71,31,.3);
-        transition:transform .15s ease, box-shadow .15s ease}
-  .talk:hover{transform:translateY(-1px);box-shadow:0 14px 38px rgba(232,71,31,.38)}
-  .talk:focus-visible{outline:2px solid #fff;outline-offset:3px}
-  .talk .rings{display:flex;align-items:center;gap:3px;height:16px}
-  .talk .rings i{display:block;width:3px;border-radius:2px;background:#fff;opacity:.9;
-                 animation:eq 1s ease-in-out infinite}
-  .talk .rings i:nth-child(1){height:7px;animation-delay:0s}
-  .talk .rings i:nth-child(2){height:14px;animation-delay:.15s}
-  .talk .rings i:nth-child(3){height:9px;animation-delay:.3s}
-  .talk .rings i:nth-child(4){height:12px;animation-delay:.45s}
-  @keyframes eq{0%,100%{transform:scaleY(.55)}50%{transform:scaleY(1)}}
-  @media(prefers-reduced-motion:reduce){ .talk .rings i{animation:none} }
-  .hint{color:var(--muted);font-size:13px}
+  .specband{border-top:1px solid rgba(255,255,255,.1);margin-top:54px;background:rgba(0,0,0,.26)}
+  .specband .wrap{display:grid;grid-template-columns:repeat(2,1fr);gap:0}
+  @media(min-width:760px){.specband .wrap{grid-template-columns:repeat(4,1fr)}}
+  .sb{padding:24px 8px;border-right:1px solid rgba(255,255,255,.08)}
+  .sb:last-child{border-right:0}
+  .sb b{display:block;font:700 30px/1 Barlow Condensed,Inter;color:#fff}
+  .sb b i{font-style:normal;font-size:14px;color:#93a1b2;margin-left:3px}
+  .sb span{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:#8d99a9}
 
-  /* ── right: the proof side ────────────────────────────────────────── */
-  .proof{background:var(--panel);border-left:1px solid var(--line);
-         padding:30px 30px 34px;display:flex;flex-direction:column;gap:18px}
-  .proof h2{font:600 13px/1 Inter;letter-spacing:.14em;text-transform:uppercase;
-            color:var(--muted);margin:0}
-  .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
-  .blip{width:8px;height:8px;border-radius:50%;background:var(--ok);
-        box-shadow:0 0 0 0 rgba(31,157,107,.6);animation:pulse 1.8s infinite}
-  @keyframes pulse{70%{box-shadow:0 0 0 9px rgba(31,157,107,0)}100%{box-shadow:0 0 0 0 rgba(31,157,107,0)}}
+  /* sections */
+  section.band{padding:84px 0}
+  .band.alt{background:var(--surface);border-block:1px solid var(--line)}
+  .kick{font:600 12px/1 Inter;letter-spacing:.2em;text-transform:uppercase;color:var(--hot);margin:0 0 12px}
+  h2{font:700 clamp(30px,4vw,44px)/1.08 Barlow Condensed,Inter;text-transform:uppercase;letter-spacing:.012em}
+  .sectop{max-width:62ch;margin-bottom:38px}
+  .sectop p{color:var(--muted);margin:14px 0 0;font-size:16.5px}
 
-  .rows{display:flex;flex-direction:column;gap:10px;overflow:auto;flex:1;min-height:180px}
-  .row{border:1px solid var(--line);background:var(--panel-2);border-radius:12px;padding:13px 15px;
-       display:grid;gap:4px;animation:none}
-  .row.fresh{border-color:rgba(31,157,107,.55);
-             box-shadow:0 0 0 1px rgba(31,157,107,.3), 0 10px 26px rgba(0,0,0,.35);
-             animation:land .6s ease}
-  @keyframes land{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
-  .row .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-  .ref{font:600 13px/1 ui-monospace,Menlo,monospace;color:var(--ok)}
-  .model{font-weight:600;font-size:14.5px}
-  .meta{color:var(--muted);font-size:12.6px}
-  .when{font-size:12.6px}
-  .when b{color:var(--text)}
-  .empty{color:var(--muted);font-size:13.5px;border:1px dashed var(--line);border-radius:12px;
-         padding:20px;text-align:center}
-  .foot{color:var(--muted);font-size:11.6px;border-top:1px solid var(--line);padding-top:13px}
-  .foot code{font:11.4px ui-monospace,Menlo,monospace;color:#b9c6d6}
+  .grid3{display:grid;gap:22px;grid-template-columns:1fr}
+  @media(min-width:860px){.grid3{grid-template-columns:repeat(3,1fr)}}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:26px}
+  .card .ic{width:38px;height:38px;border-radius:9px;background:rgba(232,71,31,.1);
+            display:grid;place-items:center;margin-bottom:15px}
+  .card .ic svg{width:19px;height:19px;color:var(--hot)}
+  .card h3{font:600 17.5px/1.3 Inter;margin-bottom:7px}
+  .card p{color:var(--muted);font-size:14.8px;margin:0}
+
+  .vars{display:grid;gap:16px;grid-template-columns:repeat(2,1fr)}
+  @media(min-width:760px){.vars{grid-template-columns:repeat(4,1fr)}}
+  .var{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper)}
+  .var .swatch{height:112px}
+  .var .nm{padding:14px 16px;font-size:14.5px;font-weight:600}
+  .var .nm span{display:block;color:var(--muted);font-weight:400;font-size:13px}
+
+  .cta{background:var(--ink);color:#fff;border-radius:18px;padding:52px 40px;
+       display:grid;gap:26px;align-items:center}
+  @media(min-width:860px){.cta{grid-template-columns:1.3fr auto}}
+  .cta h2{color:#fff}
+  .cta p{color:#aeb9c7;margin:12px 0 0;max-width:52ch}
+
+  footer{background:var(--ink-2);color:#92a0b1;padding:46px 0 36px;font-size:14px}
+  footer .cols{display:grid;gap:26px;grid-template-columns:1fr}
+  @media(min-width:760px){footer .cols{grid-template-columns:2fr 1fr 1fr 1fr}}
+  footer h4{color:#fff;font:600 12px/1 Inter;letter-spacing:.15em;text-transform:uppercase;margin:0 0 14px}
+  footer ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+  footer a{text-decoration:none}
+  footer a:hover{color:#fff}
+  .legal{border-top:1px solid rgba(255,255,255,.08);margin-top:34px;padding-top:20px;font-size:12.6px}
+
+  /* assistant widget */
+  #ast{position:fixed;right:24px;bottom:24px;z-index:60;font-family:Inter,-apple-system,sans-serif}
+  .launch{display:flex;align-items:center;gap:11px;border:0;cursor:pointer;
+    background:var(--hot);color:#fff;border-radius:999px;padding:14px 22px 14px 18px;
+    font:600 15px/1 Inter;box-shadow:0 14px 34px rgba(232,71,31,.4);
+    transition:transform .16s ease,box-shadow .16s ease}
+  .launch:hover{transform:translateY(-2px);box-shadow:0 18px 42px rgba(232,71,31,.48)}
+  .launch:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+  .launch svg{width:19px;height:19px}
+  .launch .dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:.9;
+               animation:bl 2s ease-in-out infinite}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .panel{width:370px;max-width:calc(100vw - 32px);background:var(--paper);
+    border:1px solid var(--line);border-radius:18px;overflow:hidden;
+    box-shadow:0 26px 70px rgba(13,17,23,.28);display:none}
+  #ast[data-open="1"] .panel{display:block;animation:rise .22s ease}
+  #ast[data-open="1"] .launch{display:none}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .phead{background:var(--ink);color:#fff;padding:15px 17px;display:flex;align-items:center;gap:11px}
+  .phead .t{font-weight:600;font-size:14.6px}
+  .phead .s{font-size:11.6px;color:#93a1b2}
+  .phead button{margin-left:auto;background:transparent;border:0;color:#93a1b2;cursor:pointer;
+                padding:5px;border-radius:7px;line-height:0}
+  .phead button:hover{color:#fff;background:rgba(255,255,255,.09)}
+  .phead svg{width:17px;height:17px}
+
+  .pbody{padding:30px 22px 24px;display:flex;flex-direction:column;align-items:center;gap:15px}
+  .orbwrap{position:relative;width:132px;height:132px;display:grid;place-items:center}
+  .ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(232,71,31,.2);pointer-events:none}
+  .ring.r2{inset:-17px;border-color:rgba(232,71,31,.11)}
+  .orb{width:98px;height:98px;border-radius:50%;border:0;cursor:pointer;padding:0;
+    background:radial-gradient(circle at 34% 30%,#ff7a52,var(--hot) 58%,#8d2208);
+    box-shadow:0 10px 30px rgba(232,71,31,.34);display:grid;place-items:center;
+    transition:transform .17s ease}
+  .orb:hover{transform:scale(1.04)}
+  .orb:focus-visible{outline:3px solid var(--ink);outline-offset:5px}
+  .orb svg{width:34px;height:34px;color:#fff;pointer-events:none}
+  #ast[data-state="idle"] .orb{animation:breathe 3.4s ease-in-out infinite}
+  #ast[data-state="connecting"] .orb{animation:spin 1.1s linear infinite;
+    background:radial-gradient(circle at 34% 30%,#c3cbd6,#7b8798 58%,#49535f)}
+  #ast[data-state="listening"] .orb{animation:pulse 1.6s ease-out infinite;
+    background:radial-gradient(circle at 34% 30%,#51d9a0,var(--ok) 58%,#0a5138)}
+  #ast[data-state="speaking"] .orb{
+    background:radial-gradient(circle at 34% 30%,#6fb6ff,var(--tvs) 58%,#06305f);
+    box-shadow:0 0 0 11px rgba(12,77,162,.1),0 10px 30px rgba(12,77,162,.32)}
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(21,133,92,.46),0 10px 30px rgba(21,133,92,.3)}
+    70%{box-shadow:0 0 0 30px rgba(21,133,92,0),0 10px 30px rgba(21,133,92,.3)}
+    100%{box-shadow:0 0 0 0 rgba(21,133,92,0),0 10px 30px rgba(21,133,92,.3)}}
+  @media(prefers-reduced-motion:reduce){.orb{animation:none!important}}
+
+  .st{font:600 11.6px/1 Inter;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);min-height:12px}
+  #ast[data-state="listening"] .st{color:var(--ok)}
+  #ast[data-state="speaking"] .st{color:var(--tvs)}
+  .hint{color:var(--muted);font-size:13.4px;text-align:center;margin:0;max-width:30ch;line-height:1.55}
+  .err{color:#c0392b;font-size:12.8px;text-align:center;margin:0;max-width:34ch;line-height:1.5}
+
+  /* customer-facing confirmation, not an internal feed */
+  .conf{width:100%;border:1px solid rgba(21,133,92,.3);background:rgba(21,133,92,.06);
+        border-radius:13px;padding:15px 16px;display:none;animation:rise .4s ease}
+  .conf.on{display:block}
+  .conf .hd{display:flex;align-items:center;gap:8px;font:600 12.6px/1 Inter;color:var(--ok);
+            letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+  .conf .hd svg{width:15px;height:15px}
+  .conf .ln{font-size:13.8px;display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+  .conf .ln span{color:var(--muted)}
+  .conf .ln b{font-weight:600;text-align:right}
+  .conf .rf{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(21,133,92,.3);
+            font:600 15px/1 ui-monospace,Menlo,monospace;color:var(--ok);text-align:center;letter-spacing:.04em}
+  .pfoot{border-top:1px solid var(--line);padding:11px 17px;font-size:11.4px;color:var(--muted);text-align:center}
 </style>
 </head>
 <body>
-<div class="shell">
 
-  <section class="stage">
-    <div class="brandrow">
-      <div class="logo">TVS<span>.</span></div>
-      <div class="pill">Premium</div>
-      <div class="pill">Test ride</div>
+<header>
+  <nav class="nav wrap">
+    <a class="logo" href="#">TVS<i>.</i></a>
+    <ul>
+      <li><a class="lnk" href="#perf">Motorcycles</a></li>
+      <li><a class="lnk" href="#perf">Scooters</a></li>
+      <li><a class="lnk" href="#perf">Electric</a></li>
+      <li><a class="lnk" href="#variants">Colours</a></li>
+      <li><a class="lnk" href="#own">Owning</a></li>
+    </ul>
+    <span class="spacer"></span>
+    <a class="ghost" href="#own">Find a dealer</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Apache Series &middot; RTR</p>
+        <h1>Apache<br><span>RTR 310</span></h1>
+        <p class="lede">The track, rewritten for the road. A 312.2 cc reverse-inclined
+        engine, five ride modes and a chassis that stays composed long after the
+        corner stops being polite.</p>
+        <div class="price"><b>&#8377;2.42 Lakh</b>ex-showroom, onwards</div>
+        <div class="herocta">
+          <button class="btn primary" id="ctaTalk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>
+            </svg>
+            Book a test ride
+          </button>
+          <a class="btn onDark" href="#perf">Explore the bike</a>
+        </div>
+      </div>
+      <div class="plate" aria-hidden="true">
+        <div class="disc"></div>
+        <div class="num">310<em>RTR</em></div>
+      </div>
     </div>
 
-    <p class="kicker">Apache Series</p>
-    <h1>Apache <em>RTR 310</em></h1>
-    <p class="lede">Built for the rider who wants the track on the commute. Ask our
-    assistant anything about the bike — or just say you want to ride it, and it will
-    book the slot while you are on the call.</p>
-
-    <div class="specs">
-      <div class="spec"><b>312.2<span style="font-size:13px"> cc</span></b><span>Engine</span></div>
-      <div class="spec"><b>35.6<span style="font-size:13px"> PS</span></b><span>Power</span></div>
-      <div class="spec"><b>28.7<span style="font-size:13px"> Nm</span></b><span>Torque</span></div>
-      <div class="spec"><b>₹2.42<span style="font-size:13px"> L</span></b><span>From</span></div>
-    </div>
-
-    <div class="cta">
-      <button class="talk" id="talk">
-        <span class="rings"><i></i><i></i><i></i><i></i></span>
-        Talk to our agent
-      </button>
-      <span class="hint">Speaks to you · books against the dealer system live</span>
+    <div class="specband">
+      <div class="wrap">
+        <div class="sb"><b>312.2<i>cc</i></b><span>Engine</span></div>
+        <div class="sb"><b>35.6<i>PS</i></b><span>Max power</span></div>
+        <div class="sb"><b>28.7<i>Nm</i></b><span>Max torque</span></div>
+        <div class="sb"><b>169<i>kg</i></b><span>Kerb weight</span></div>
+      </div>
     </div>
   </section>
 
-  <aside class="proof">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <h2>Dealer system — live</h2>
-      <span class="live"><span class="blip"></span>MDMS_TEST_RIDE</span>
+  <section class="band" id="perf">
+    <div class="wrap">
+      <div class="sectop">
+        <p class="kick">Built to be ridden</p>
+        <h2>Everything sharpened, nothing softened</h2>
+        <p>Three things make the RTR 310 feel quicker than the numbers suggest: how
+        early the torque arrives, how little the chassis argues, and how much the
+        electronics stay out of the way until you need them.</p>
+      </div>
+      <div class="grid3">
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+          <h3>Five ride modes</h3>
+          <p>Urban, Rain, Sport, Track and Supermoto &mdash; each remapping throttle response,
+          ABS and traction control together rather than one at a time.</p>
+        </div>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>0&ndash;100 in 7.1s</h3>
+          <p>A reverse-inclined DOHC single that pulls cleanly from 3,000 rpm and keeps
+          going to a 10,000 rpm ceiling.</p>
+        </div>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <h3>Cornering safety suite</h3>
+          <p>Lean-sensitive ABS and traction control, with rear-lift protection and
+          a slipper clutch that keeps downshifts tidy.</p>
+        </div>
+      </div>
     </div>
-    <div class="rows" id="rows">
-      <div class="empty">No bookings yet. When the agent confirms a ride, the row
-      lands here — straight from the dealer database, not from the conversation.</div>
-    </div>
-    <div class="foot">
-      Polling <code>GET /OnlineSalesAPI/TestRide/RecentBookings</code> every 2s.
-      Mobile numbers are masked server-side.
-    </div>
-  </aside>
+  </section>
 
+  <section class="band alt" id="variants">
+    <div class="wrap">
+      <div class="sectop">
+        <p class="kick">Colours</p>
+        <h2>Four ways to be noticed</h2>
+      </div>
+      <div class="vars">
+        <div class="var"><div class="swatch" style="background:linear-gradient(135deg,#E8471F,#9c2a0d)"></div>
+          <div class="nm">Fury Yellow Red<span>Dual tone</span></div></div>
+        <div class="var"><div class="swatch" style="background:linear-gradient(135deg,#1b2430,#070a0f)"></div>
+          <div class="nm">Sepang Blue Black<span>Matte</span></div></div>
+        <div class="var"><div class="swatch" style="background:linear-gradient(135deg,#0C4DA2,#062c5e)"></div>
+          <div class="nm">Racing Blue<span>Gloss</span></div></div>
+        <div class="var"><div class="swatch" style="background:linear-gradient(135deg,#d9dde3,#9aa3af)"></div>
+          <div class="nm">Arsenal Black<span>Pearl white</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="own">
+    <div class="wrap">
+      <div class="cta">
+        <div>
+          <h2>Ride it before you decide</h2>
+          <p>Our assistant will find a slot at a showroom near you and book it while
+          you are still on the call. No forms, no callback queue.</p>
+        </div>
+        <div><button class="btn primary" id="ctaTalk2">Book a test ride</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <div class="logo" style="color:#fff">TVS<i>.</i></div>
+        <p style="max-width:34ch;margin:12px 0 0">TVS Motor Company. Building motorcycles
+        and scooters for riders in more than sixty countries.</p>
+      </div>
+      <div><h4>Motorcycles</h4><ul>
+        <li><a href="#perf">Apache RTR 310</a></li><li><a href="#perf">Apache RR 310</a></li>
+        <li><a href="#perf">Ronin</a></li><li><a href="#perf">Apache RTR 160</a></li></ul></div>
+      <div><h4>Owning</h4><ul>
+        <li><a href="#own">Book a test ride</a></li><li><a href="#own">Find a dealer</a></li>
+        <li><a href="#own">Service</a></li><li><a href="#own">Genuine parts</a></li></ul></div>
+      <div><h4>Company</h4><ul>
+        <li><a href="#own">About</a></li><li><a href="#own">Racing</a></li>
+        <li><a href="#own">Careers</a></li><li><a href="#own">Contact</a></li></ul></div>
+    </div>
+    <div class="legal">Demonstration environment. Prices and specifications shown are
+    indicative. &copy; TVS Motor Company.</div>
+  </div>
+</footer>
+
+<!-- Assistant. Deliberately customer-facing: it shows the confirmation a customer
+     would see and nothing about the dealer system behind it. The internal booking
+     feed lives at /ops, which is not part of the demo. -->
+<div id="ast" data-open="0" data-state="idle">
+  <button class="launch" id="launch">
+    <span class="dot"></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>
+    </svg>
+    Talk to us
+  </button>
+
+  <div class="panel" role="dialog" aria-label="TVS assistant">
+    <div class="phead">
+      <div>
+        <div class="t">TVS Assistant</div>
+        <div class="s" id="hsub">Here to help you ride</div>
+      </div>
+      <button id="close" aria-label="Close assistant">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="pbody">
+      <div class="orbwrap">
+        <span class="ring r2"></span><span class="ring"></span>
+        <button class="orb" id="orb" aria-label="Start talking">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="st" id="state">Tap to talk</div>
+      <p class="hint" id="hint">Ask about the bike, or just say you would like to ride it.</p>
+      <p class="err" id="err" role="status"></p>
+
+      <div class="conf" id="conf">
+        <div class="hd">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+               stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Test ride confirmed
+        </div>
+        <div class="ln"><span>Model</span><b id="cModel">&mdash;</b></div>
+        <div class="ln"><span>When</span><b id="cWhen">&mdash;</b></div>
+        <div class="ln"><span>Where</span><b id="cWhere">&mdash;</b></div>
+        <div class="rf" id="cRef">&mdash;</div>
+      </div>
+    </div>
+    <div class="pfoot">You will receive an SMS confirmation shortly.</div>
+  </div>
 </div>
 
-<!-- ElevenLabs conversational widget. agent-id is substituted at deploy time. -->
-<!-- connection-type is pinned to websocket on purpose. The widget defaults to
-     WebRTC, and on a network that blocks it the session dies with "connection
-     closed unexpectedly before session could be established" - which reads like
-     a broken agent. Connecting to the conversation socket directly proved the
-     backend session establishes fine, so the transport was the problem. -->
-<elevenlabs-convai agent-id="agent_3701m4bcvpfse72t0rvjx5g3skqn"
-                   connection-type="websocket"></elevenlabs-convai>
-<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+<script type="module">
+import { Conversation } from "https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.27.0/+esm";
 
-<script>
-(function () {
-  "use strict";
-  var API = "/OnlineSalesAPI/TestRide/RecentBookings?limit=6";
-  var rows = document.getElementById("rows");
-  var seen = Object.create(null);
-  var first = true;
+const AGENT_ID = "agent_3701m4bcvpfse72t0rvjx5g3skqn";
+const $ = (id) => document.getElementById(id);
+const ast = $("ast"), orb = $("orb"), stateEl = $("state"), errEl = $("err"), hint = $("hint");
 
-  function esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+let convo = null, busy = false, baseline = null;
+
+const setState = (s, label) => { ast.dataset.state = s; stateEl.textContent = label; };
+
+function openPanel(v) {
+  ast.dataset.open = v ? "1" : "0";
+  if (v && !convo && !busy) start();        // opening the panel starts the call
+  if (!v && convo) stop();
+}
+
+$("launch").addEventListener("click", () => openPanel(true));
+$("close").addEventListener("click", () => openPanel(false));
+$("ctaTalk").addEventListener("click", () => openPanel(true));
+$("ctaTalk2").addEventListener("click", () => openPanel(true));
+orb.addEventListener("click", () => (convo ? stop() : start()));
+
+async function start() {
+  if (busy) return;
+  busy = true; errEl.textContent = "";
+  try {
+    setState("connecting", "Connecting");
+    // Snapshot what already exists, so the confirmation card can only ever show a
+    // booking made during THIS call and never an older row.
+    baseline = await refs();
+
+    // Ask for the microphone first, so a refusal is reported as a refusal rather
+    // than surfacing later as an unexplained disconnect.
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    convo = await Conversation.startSession({
+      agentId: AGENT_ID,
+      // The SDK defaults to WebRTC, which many corporate networks drop; it then
+      // fails as "connection closed before session could be established".
+      connectionType: "websocket",
+      onConnect: () => { setState("listening", "Listening");
+                         hint.textContent = "Speak naturally — you can interrupt at any time."; },
+      onDisconnect: () => { convo = null; setState("idle", "Tap to talk");
+                            hint.textContent = "Tap the microphone to start again."; },
+      onError: (e) => { errEl.textContent = e?.message || String(e); },
+      onModeChange: (m) => {
+        const sp = (m?.mode ?? m) === "speaking";
+        setState(sp ? "speaking" : "listening", sp ? "Assistant speaking" : "Listening");
+      },
     });
-  }
+  } catch (e) {
+    const msg = String(e?.message || e);
+    errEl.textContent =
+      /denied|NotAllowed|Permission|dismissed/i.test(msg)
+        ? "Microphone is blocked. Allow it from the padlock in the address bar, then tap again."
+      : /closed|socket|network/i.test(msg)
+        ? "Could not reach the voice service. A VPN, firewall or browser extension is "
+          + "the usual cause — try an incognito window."
+        : msg;
+    setState("idle", "Tap to talk");
+    convo = null;
+  } finally { busy = false; }
+}
 
-  function pretty(d) {
-    var p = String(d || "").split("-");
-    if (p.length !== 3) return esc(d);
-    var dt = new Date(+p[0], +p[1] - 1, +p[2]);
-    if (isNaN(dt)) return esc(d);
-    return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-  }
+async function stop() {
+  const c = convo; convo = null;
+  if (c) { try { await c.endSession(); } catch (_) {} }
+  setState("idle", "Tap to talk");
+}
+window.addEventListener("beforeunload", () => { if (convo) convo.endSession(); });
 
-  function render(list) {
-    if (!list.length) return;
-    rows.innerHTML = "";
-    list.forEach(function (b) {
-      var isNew = !first && !seen[b.TR_NO];
-      seen[b.TR_NO] = 1;
-      var el = document.createElement("div");
-      el.className = "row" + (isNew ? " fresh" : "");
-      el.innerHTML =
-        '<div class="top"><span class="model">' + esc(b.MODEL_DESC) + '</span>' +
-        '<span class="ref">' + esc(b.TR_NO) + '</span></div>' +
-        '<div class="when"><b>' + pretty(b.SLOT_DATE) + ', ' + esc(b.SLOT_TIME) + '</b> · ' +
-        esc(b.SHOWROOM) + '</div>' +
-        '<div class="meta">' + esc(b.CUSTOMER_NAME) + ' · ' + esc(b.MOBILE_NO) +
-        ' · ' + esc(b.STATUS) + '</div>';
-      rows.appendChild(el);
-      if (isNew) setTimeout(function () { el.classList.remove("fresh"); }, 9000);
-    });
-    first = false;
-  }
+/* The confirmation card is driven by the dealer database rather than by what the
+   assistant said, so a booking it only claimed to make never appears here. */
+async function fetchBookings() {
+  try {
+    const r = await fetch("/OnlineSalesAPI/TestRide/RecentBookings?limit=6", { cache: "no-store" });
+    if (!r.ok) return [];
+    return (await r.json())?.data?.Bookings || [];
+  } catch (_) { return []; }
+}
+async function refs() { return new Set((await fetchBookings()).map((b) => b.TR_NO)); }
 
-  function poll() {
-    fetch(API, { cache: "no-store" })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) {
-        var list = j && j.data && j.data.Bookings;
-        if (Array.isArray(list)) render(list);
-      })
-      .catch(function () { /* a dropped poll is not worth showing the room */ });
-  }
+const pretty = (d) => {
+  const p = String(d || "").split("-");
+  if (p.length !== 3) return d || "—";
+  const dt = new Date(+p[0], +p[1] - 1, +p[2]);
+  return isNaN(dt) ? d : dt.toLocaleDateString("en-GB",
+    { weekday: "long", day: "numeric", month: "long" });
+};
 
-  poll();
-  setInterval(poll, 2000);
-
-  // The button is the visible affordance; the widget owns the actual session, so
-  // clicking it just opens the widget rather than starting a second one.
-  document.getElementById("talk").addEventListener("click", function () {
-    var w = document.querySelector("elevenlabs-convai");
-    if (w && typeof w.toggle === "function") { w.toggle(); return; }
-    var btn = w && w.shadowRoot && w.shadowRoot.querySelector("button");
-    if (btn) btn.click();
-  });
-})();
+setInterval(async () => {
+  if (!baseline) return;
+  const list = await fetchBookings();
+  const fresh = list.find((b) => !baseline.has(b.TR_NO));
+  if (!fresh) return;
+  baseline.add(fresh.TR_NO);
+  $("cModel").textContent = fresh.MODEL_DESC;
+  $("cWhen").textContent  = pretty(fresh.SLOT_DATE) + ", " + fresh.SLOT_TIME;
+  $("cWhere").textContent = fresh.SHOWROOM;
+  $("cRef").textContent   = fresh.TR_NO;
+  $("conf").classList.add("on");
+  $("hsub").textContent = "Booking confirmed";
+}, 2000);
 </script>
 </body>
 </html>

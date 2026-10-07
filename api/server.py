@@ -1022,6 +1022,14 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == f"{BASE}/AuditTrail":            # demo/inspection helper
             rows = q("SELECT * FROM MDMS_API_AUDIT ORDER BY AUDIT_ID DESC LIMIT 25")
             return self._reply(200, "Success", {"Recent": rows})
+        if u.path in ("/ops", "/ops/"):
+            # Internal booking feed. Kept off the customer-facing page on purpose:
+            # the demo should look like a product, not like a database viewer.
+            page = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ops.html")
+            if not os.path.exists(page):
+                return self._html("<h1>ops.html not found</h1>")
+            return self._html(open(page, encoding="utf-8").read())
+
         if u.path in ("/voice", "/voice/"):
             page = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "voice.html")
             if not os.path.exists(page):
@@ -1029,6 +1037,30 @@ class Handler(BaseHTTPRequestHandler):
             return self._html(open(page, encoding="utf-8").read())
 
         if u.path == f"{BASE}/TestRide/RecentBookings":
+            # The voice agent's tools point at the hosted DMS, because ElevenLabs can
+            # only call a public URL. When this server runs locally the demo page would
+            # otherwise poll the LOCAL database and never show the booking the agent
+            # just made - the panel sits empty while the call plainly succeeded. If
+            # DMS_FEED_UPSTREAM is set, read the feed back from wherever the agent writes
+            # so the page and the agent agree on one database.
+            up = os.environ.get("DMS_FEED_UPSTREAM")
+            if up:
+                try:
+                    import urllib.request as _u
+                    with _u.urlopen(f"{up}/TestRide/RecentBookings?{u.query}", timeout=6) as r:
+                        body = r.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                except Exception as e:
+                    # Fail visibly in the log, then fall through to the local table
+                    # rather than blanking the panel mid-demo.
+                    print(f"[feed] upstream {up} failed: {e}", flush=True)
             return self._reply(*get_recent_testrides(p))
 
         if u.path == f"{BASE}/TestRide/GetAvailableSlots":
