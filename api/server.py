@@ -12,7 +12,7 @@ Mirrors the conventions of the real TVS API as documented in
 
 Run:  python3 api/server.py           (default port 8900)
 """
-import datetime as dt, hashlib, json, os, sqlite3, sys, urllib.parse
+import datetime as dt, hashlib, json, os, re, sqlite3, sys, urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -727,6 +727,213 @@ def update_amc_validity_dates(body, idem_key=None):
                        "changed.[[/S]]")}
 
 
+# ══ TEST RIDE — the voice lead-conversion demo ══════════════════════════════
+# These two are called by the ElevenLabs agent as server tools, so they take the
+# service credential in headers rather than a dealer JWT. There is no dealer session
+# here: the caller is a prospective customer on the public site, not signed-in staff.
+
+CITY_ALIASES = {
+    "bangalore": "Bangalore", "bengaluru": "Bangalore", "blr": "Bangalore",
+    "chennai": "Chennai", "madras": "Chennai",
+    "pune": "Pune", "cochin": "Cochin", "kochi": "Cochin",
+    "mumbai": "Mumbai", "bombay": "Mumbai",
+}
+
+
+def _norm(s):
+    return "".join(ch for ch in (s or "").lower() if ch.isalnum() or ch == " ").split()
+
+
+def resolve_model(name):
+    """Match what a customer says to a model row.
+
+    A caller says "Apache 310", "RTR 310" or "the RR". Exact matching fails on all
+    three, so this scores on shared tokens and requires a distinguishing one - a
+    number or a model word - before it will answer. Returning the wrong bike is
+    worse than asking which one they meant.
+    """
+    want = _norm(name)
+    if not want:
+        return None, []
+    rows = q("SELECT * FROM MDMS_TEST_RIDE_MODEL WHERE ACTIVE=1")
+    scored = []
+    for r in rows:
+        have = _norm(r["MODEL_DESC"])
+        overlap = [t for t in want if t in have]
+        if not overlap:
+            continue
+        strong = [t for t in overlap if t not in ("tvs", "the")]
+        if not strong:
+            continue
+        scored.append((len(strong), -len(have), r))
+    if not scored:
+        return None, []
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    best = scored[0][0]
+    tied = [s[2] for s in scored if s[0] == best]
+    return (tied[0], tied) if len(tied) == 1 else (None, tied)
+
+
+def service_auth(headers):
+    """The credential an external caller presents. Used by the test-ride routes,
+    which are reached by the voice agent on behalf of a member of the public - there
+    is no dealer session to scope them to."""
+    client = headers.get("X-Service-Client")
+    secret = headers.get("X-Service-Secret")
+    if not client or SERVICE_CLIENTS.get(client) != secret:
+        return False
+    return True
+
+
+def get_testride_slots(p):
+    """Open slots for a model, optionally narrowed by city and a from-date."""
+    model, candidates = resolve_model(p.get("Model"))
+    if not model:
+        names = [c["MODEL_DESC"] for c in candidates]
+        return 200, "Model not resolved", {
+            "Resolved": False, "Candidates": names,
+            "BotSummary": ("[[S]]I could not pin that to one model. Did you mean "
+                           + " or ".join(names) + "?[[/S]]") if names else
+                          "[[S]]I did not catch which bike you meant. Which model were "
+                          "you looking at?[[/S]]"}
+
+    city = CITY_ALIASES.get((p.get("City") or "").strip().lower())
+    frm = (p.get("FromDate") or dt.date.today().isoformat())[:10]
+    sql = """SELECT CITY, SHOWROOM, ADDRESS, SLOT_DATE, SLOT_TIME, DEALER_ID, BRANCH_ID
+             FROM MDMS_TEST_RIDE_SLOT
+             WHERE MODEL_ID=? AND ACTIVE=1 AND BOOKED < CAPACITY AND SLOT_DATE >= ?"""
+    args = [model["MODEL_ID"], frm]
+    if city:
+        sql += " AND CITY=?"
+        args.append(city)
+    sql += " ORDER BY SLOT_DATE, SLOT_TIME LIMIT 12"
+    slots = q(sql, tuple(args))
+    if not slots:
+        return 200, "No slots", {
+            "Resolved": True, "Model": model["MODEL_DESC"], "Slots": [],
+            "BotSummary": "[[S]]There is nothing open for the " + model["MODEL_DESC"]
+                          + (" in " + city if city else "") + " in the next two weeks. "
+                          "Shall I look at another showroom or a different model?[[/S]]"}
+
+    first = slots[0]
+    when = dt.date.fromisoformat(first["SLOT_DATE"]).strftime("%A %-d %B")
+    return 200, "Success", {
+        "Resolved": True, "Model": model["MODEL_DESC"],
+        "Segment": model["SEGMENT"], "PriceFrom": model["PRICE_FROM"],
+        "Slots": [dict(s) for s in slots],
+        "BotSummary": "[[S]]The earliest for the " + model["MODEL_DESC"] + " is "
+                      + when + " at " + first["SLOT_TIME"] + ", " + first["SHOWROOM"]
+                      + ". There are " + str(len(slots)) + " open slots over the next "
+                      "two weeks.[[/S]]"}
+
+
+def book_testride(body):
+    """Allocate a slot and write the booking.
+
+    The agent never picks the slot itself. It passes what the customer asked for and
+    this decides, which is what makes the confirmation it reads out true rather than
+    plausible.
+    """
+    name = (body.get("CustomerName") or "").strip()
+    mobile = re.sub(r"[^0-9]", "", str(body.get("MobileNo") or ""))
+    if len(mobile) > 10:
+        mobile = mobile[-10:]
+    if not name or len(mobile) != 10:
+        return 200, "Customer details incomplete", {
+            "Booked": False,
+            "BotSummary": "[[S]]I still need a name and a ten digit mobile number "
+                          "before I can hold the slot.[[/S]]"}
+
+    model, candidates = resolve_model(body.get("Model"))
+    if not model:
+        names = [c["MODEL_DESC"] for c in candidates]
+        return 200, "Model not resolved", {
+            "Booked": False, "Candidates": names,
+            "BotSummary": ("[[S]]Before I book it - did you mean "
+                           + " or ".join(names) + "?[[/S]]") if names else
+                          "[[S]]Which model should I book the ride on?[[/S]]"}
+
+    city = CITY_ALIASES.get((body.get("City") or "").strip().lower())
+    want_date = (body.get("PreferredDate") or "")[:10]
+    want_time = (body.get("PreferredTime") or "").strip()
+
+    sql = """SELECT * FROM MDMS_TEST_RIDE_SLOT
+             WHERE MODEL_ID=? AND ACTIVE=1 AND BOOKED < CAPACITY AND SLOT_DATE >= ?"""
+    args = [model["MODEL_ID"], want_date or dt.date.today().isoformat()]
+    if city:
+        sql += " AND CITY=?"
+        args.append(city)
+    if want_date:
+        sql += " AND SLOT_DATE=?"
+        args.append(want_date)
+    if want_time:
+        sql += " AND SLOT_TIME=?"
+        args.append(want_time)
+    exact = q(sql + " ORDER BY SLOT_DATE, SLOT_TIME LIMIT 1", tuple(args))
+
+    offered_alternative = False
+    if not exact:
+        # Asked-for slot is gone. Fall back to the next open one rather than failing,
+        # and say so - "that one is taken, the next is at 11:30" is the moment that
+        # shows the slot is real.
+        offered_alternative = True
+        sql2 = """SELECT * FROM MDMS_TEST_RIDE_SLOT
+                  WHERE MODEL_ID=? AND ACTIVE=1 AND BOOKED < CAPACITY AND SLOT_DATE >= ?"""
+        args2 = [model["MODEL_ID"], want_date or dt.date.today().isoformat()]
+        if city:
+            sql2 += " AND CITY=?"
+            args2.append(city)
+        exact = q(sql2 + " ORDER BY SLOT_DATE, SLOT_TIME LIMIT 1", tuple(args2))
+    if not exact:
+        return 200, "No slot available", {
+            "Booked": False,
+            "BotSummary": "[[S]]I could not find an open slot for the "
+                          + model["MODEL_DESC"] + " in that window. Shall I try another "
+                          "showroom or a later date?[[/S]]"}
+
+    slot = exact[0]
+    nxt = q("SELECT IFNULL(MAX(TR_ID),0)+1 n FROM MDMS_TEST_RIDE")[0]["n"]
+    tr_no = "TR%06d" % (100000 + nxt)
+    now = dt.datetime.now().isoformat(timespec="seconds")
+
+    exec_write("UPDATE MDMS_TEST_RIDE_SLOT SET BOOKED = BOOKED + 1 WHERE SLOT_ID=?",
+               (slot["SLOT_ID"],))
+    exec_write("""INSERT INTO MDMS_TEST_RIDE
+                  (TR_NO, CUSTOMER_NAME, MOBILE_NO, EMAIL, MODEL_ID, MODEL_DESC,
+                   DEALER_ID, BRANCH_ID, CITY, SHOWROOM, SLOT_DATE, SLOT_TIME,
+                   STATUS, SOURCE, LEAD_REF, CREATED_AT)
+                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               (tr_no, name, mobile, (body.get("Email") or "").strip() or None,
+                model["MODEL_ID"], model["MODEL_DESC"], slot["DEALER_ID"], slot["BRANCH_ID"],
+                slot["CITY"], slot["SHOWROOM"], slot["SLOT_DATE"], slot["SLOT_TIME"],
+                "Confirmed", (body.get("Source") or "voice").strip(),
+                (body.get("LeadRef") or "").strip() or None, now))
+
+    # Read it back. A write that was accepted is not a write that landed, and the
+    # agent is about to say this out loud to a customer.
+    saved = q("SELECT * FROM MDMS_TEST_RIDE WHERE TR_NO=?", (tr_no,))
+    if not saved:
+        return 200, "Booking did not save", {
+            "Booked": False,
+            "BotSummary": "[[S]]I was not able to confirm that booking. Nothing has "
+                          "been reserved - let me put you through to the showroom.[[/S]]"}
+    s = saved[0]
+    when = dt.date.fromisoformat(s["SLOT_DATE"]).strftime("%A %-d %B")
+    lead = ("That time was already taken, so I have put you in at " + s["SLOT_TIME"] + ". "
+            if offered_alternative else "")
+    audit("TestRide/BookTestRide", "OK", dealer=s["DEALER_ID"], branch=s["BRANCH_ID"],
+          user=mobile, detail=f"{tr_no}: {s['MODEL_DESC']} {s['SLOT_DATE']} {s['SLOT_TIME']} @ {s['SHOWROOM']}")
+    return 200, "Success", {
+        "Booked": True, "VerifiedFromDatabase": True,
+        "TestRideNo": tr_no, "Model": s["MODEL_DESC"],
+        "Date": s["SLOT_DATE"], "Time": s["SLOT_TIME"],
+        "Showroom": s["SHOWROOM"], "City": s["CITY"],
+        "Address": slot["ADDRESS"], "AlternativeOffered": offered_alternative,
+        "BotSummary": "[[S]]" + lead + "You are booked for the " + s["MODEL_DESC"]
+                      + " on " + when + " at " + s["SLOT_TIME"] + ", " + s["SHOWROOM"]
+                      + ". Your reference is " + tr_no + ".[[/S]]"}
+
+
 # GET routes: path -> (handler, params whose value must match the token claims)
 GET_ROUTES = {
     f"{BASE}/VehicleInvoice/GetInvoiceDiagnostics": get_invoice_diagnostics,
@@ -792,6 +999,13 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == f"{BASE}/AuditTrail":            # demo/inspection helper
             rows = q("SELECT * FROM MDMS_API_AUDIT ORDER BY AUDIT_ID DESC LIMIT 25")
             return self._reply(200, "Success", {"Recent": rows})
+        if u.path == f"{BASE}/TestRide/GetAvailableSlots":
+            if not service_auth(self.headers):
+                audit("TestRide/GetAvailableSlots", "UNAUTHORIZED",
+                      detail="bad or missing service credential")
+                return self._reply(401, "Unauthorized Access — service credential rejected", None)
+            return self._reply(*get_testride_slots(p))
+
         if u.path == f"{BASE}/health":
             return self._reply(200, "Success", {"status": "up"})
 
@@ -828,6 +1042,17 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == f"{BASE}/Login/ServiceTokenForDealer":
             return self._reply(*service_token_for_dealer(self.headers, body))
 
+        if u.path == f"{BASE}/TestRide/BookTestRide":
+            if not service_auth(self.headers):
+                audit("TestRide/BookTestRide", "UNAUTHORIZED",
+                      detail="bad or missing service credential")
+                return self._reply(401, "Unauthorized Access — service credential rejected", None)
+            try:
+                return self._reply(*book_testride(body))
+            except Exception as e:                               # noqa: BLE001
+                audit("TestRide/BookTestRide", "ERROR", detail=f"{type(e).__name__}: {e}")
+                return self._reply(500, f"Server error: {type(e).__name__}: {e}", None)
+
         if u.path == f"{BASE}/AMC/UpdateAMCValidityDates":
             _, err = self._auth(body.get("DEALER_ID"), body.get("BRANCH_ID"), body.get("USER_ID"))
             if err:
@@ -863,6 +1088,7 @@ TABLES = ["MDMS_VEHICLE_INVOICE","MDMS_BOOKING_PART","MDMS_MODEL_PART","MDMS_MOD
           "MDMS_VEHICLE_PRICE_MASTER","MDMS_CUSTOMER","MDMS_DEALER","MDMS_RTO",
           "MDMS_AMC","MDMS_DEALERSHIP",
           "MDMS_JOB_CARD","MDMS_JOB_TYPE","MDMS_MODEL_JOB_TYPE",
+          "MDMS_TEST_RIDE","MDMS_TEST_RIDE_SLOT","MDMS_TEST_RIDE_MODEL",
           "MDMS_API_AUDIT","MDMS_API_IDEMPOTENCY"]
 
 _CSS = """<style>
@@ -1111,7 +1337,7 @@ INDEX_HTML = """<!doctype html><meta charset=utf-8><title>Mock OnlineDMS — TVS
 
 <h2>Browse the data</h2>
 <div class=ep><span class="m get">GET</span><code>/db</code>
- <p class=d>All fifteen tables, row counts, and a read-only SQL box. The SOP walkthrough rows are highlighted.</p>
+ <p class=d>All eighteen tables, row counts, and a read-only SQL box. The SOP walkthrough rows are highlighted.</p>
  <p class=d><b>Live view.</b> <code>/db?t=MDMS_AMC&amp;live=1</code> re-reads every 3 seconds and
  flashes green any row the bot has written in the last two minutes, above a log of those writes
  taken from the audit trail. Put it beside the dealer portal and the row changes on screen while
