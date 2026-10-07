@@ -774,6 +774,29 @@ def resolve_model(name):
     return (tied[0], tied) if len(tied) == 1 else (None, tied)
 
 
+def get_recent_testrides(p):
+    """The last few bookings, for the live panel on the demo page.
+
+    Open on purpose: it is read-only, returns nothing sensitive beyond a masked
+    mobile, and the page that polls it is public. Masking happens here rather than
+    in the page so the raw number never leaves the server.
+    """
+    try:
+        lim = max(1, min(10, int(p.get("limit", "6"))))
+    except ValueError:
+        lim = 6
+    rows = q("""SELECT TR_NO, CUSTOMER_NAME, MOBILE_NO, MODEL_DESC, CITY, SHOWROOM,
+                       SLOT_DATE, SLOT_TIME, STATUS, SOURCE, CREATED_AT
+                FROM MDMS_TEST_RIDE ORDER BY TR_ID DESC LIMIT ?""", (lim,))
+    out = []
+    for r in rows:
+        d = dict(r)
+        m = str(d.get("MOBILE_NO") or "")
+        d["MOBILE_NO"] = (m[:2] + "******" + m[-2:]) if len(m) == 10 else "******"
+        out.append(d)
+    return 200, "Success", {"Count": len(out), "Bookings": out}
+
+
 def service_auth(headers):
     """The credential an external caller presents. Used by the test-ride routes,
     which are reached by the voice agent on behalf of a member of the public - there
@@ -999,6 +1022,15 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == f"{BASE}/AuditTrail":            # demo/inspection helper
             rows = q("SELECT * FROM MDMS_API_AUDIT ORDER BY AUDIT_ID DESC LIMIT 25")
             return self._reply(200, "Success", {"Recent": rows})
+        if u.path in ("/voice", "/voice/"):
+            page = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "voice.html")
+            if not os.path.exists(page):
+                return self._html("<h1>voice.html not found</h1>")
+            return self._html(open(page, encoding="utf-8").read())
+
+        if u.path == f"{BASE}/TestRide/RecentBookings":
+            return self._reply(*get_recent_testrides(p))
+
         if u.path == f"{BASE}/TestRide/GetAvailableSlots":
             if not service_auth(self.headers):
                 audit("TestRide/GetAvailableSlots", "UNAUTHORIZED",

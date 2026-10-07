@@ -28,7 +28,7 @@ API_PORT  = int(os.environ.get("MOCK_DMS_PORT", "8900"))
 AUTH_PORT = int(os.environ.get("AUTH_PORT", "8899"))
 # Paths the DMS API owns. /db is its SQL table browser — the screen that shows the
 # data behind every answer, which is half the point of the demo.
-API_PATHS = ("/OnlineSalesAPI", "/db")
+API_PATHS = ("/OnlineSalesAPI", "/db", "/voice")
 WEBHOOK_PATH = "/devrev-webhook"
 WEBHOOK_LOG  = os.path.join(HERE, "webhook.log")
 

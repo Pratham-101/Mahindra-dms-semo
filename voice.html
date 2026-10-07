@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TVS Apache RTR 310 — Book a Test Ride</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ink:#0b0e13; --panel:#141922; --panel-2:#1b212c; --line:#262e3b;
+    --text:#eef2f7; --muted:#97a3b4;
+    --tvs:#0C4DA2;            /* TVS blue */
+    --hot:#E8471F;            /* Apache red */
+    --ok:#1f9d6b; --warn:#d99a22;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--ink);color:var(--text);
+    font:15px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{display:grid;grid-template-columns:1fr;min-height:100vh}
+  @media(min-width:1080px){ .shell{grid-template-columns:1.35fr .95fr} }
+
+  /* ── left: the brand side ─────────────────────────────────────────── */
+  .stage{position:relative;padding:38px 42px 44px;display:flex;flex-direction:column;
+         background:
+           radial-gradient(1100px 620px at 12% -8%, rgba(12,77,162,.30), transparent 62%),
+           radial-gradient(760px 520px at 92% 108%, rgba(232,71,31,.20), transparent 60%),
+           var(--ink);
+         overflow:hidden}
+  .stage::after{content:"";position:absolute;inset:auto -10% -42% -10%;height:60%;
+                background:radial-gradient(60% 100% at 50% 0,rgba(255,255,255,.05),transparent 70%)}
+  .brandrow{display:flex;align-items:center;gap:14px;margin-bottom:auto}
+  .logo{font:700 20px/1 Barlow Condensed,Inter;letter-spacing:.22em;color:#fff}
+  .logo span{color:var(--hot)}
+  .pill{font:600 11px/1 Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+        border:1px solid var(--line);border-radius:999px;padding:6px 11px}
+
+  .kicker{font:600 12px/1 Inter;letter-spacing:.2em;text-transform:uppercase;color:var(--hot);margin:0 0 12px}
+  h1{font:700 clamp(40px,6.4vw,74px)/0.94 Barlow Condensed,Inter;letter-spacing:.012em;
+     margin:0 0 14px;text-transform:uppercase;text-wrap:balance}
+  h1 em{font-style:normal;color:var(--hot)}
+  .lede{color:var(--muted);max-width:52ch;margin:0 0 26px;font-size:16px}
+
+  .specs{display:flex;gap:28px;flex-wrap:wrap;margin:0 0 30px;padding:18px 0;
+         border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .spec b{display:block;font:700 23px/1.1 Barlow Condensed,Inter;letter-spacing:.02em}
+  .spec span{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+
+  .cta{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .talk{display:inline-flex;align-items:center;gap:11px;border:0;cursor:pointer;
+        background:var(--hot);color:#fff;font:600 15px/1 Inter;letter-spacing:.01em;
+        padding:16px 24px;border-radius:12px;box-shadow:0 10px 30px rgba(232,71,31,.3);
+        transition:transform .15s ease, box-shadow .15s ease}
+  .talk:hover{transform:translateY(-1px);box-shadow:0 14px 38px rgba(232,71,31,.38)}
+  .talk:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  .talk .rings{display:flex;align-items:center;gap:3px;height:16px}
+  .talk .rings i{display:block;width:3px;border-radius:2px;background:#fff;opacity:.9;
+                 animation:eq 1s ease-in-out infinite}
+  .talk .rings i:nth-child(1){height:7px;animation-delay:0s}
+  .talk .rings i:nth-child(2){height:14px;animation-delay:.15s}
+  .talk .rings i:nth-child(3){height:9px;animation-delay:.3s}
+  .talk .rings i:nth-child(4){height:12px;animation-delay:.45s}
+  @keyframes eq{0%,100%{transform:scaleY(.55)}50%{transform:scaleY(1)}}
+  @media(prefers-reduced-motion:reduce){ .talk .rings i{animation:none} }
+  .hint{color:var(--muted);font-size:13px}
+
+  /* ── right: the proof side ────────────────────────────────────────── */
+  .proof{background:var(--panel);border-left:1px solid var(--line);
+         padding:30px 30px 34px;display:flex;flex-direction:column;gap:18px}
+  .proof h2{font:600 13px/1 Inter;letter-spacing:.14em;text-transform:uppercase;
+            color:var(--muted);margin:0}
+  .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+  .blip{width:8px;height:8px;border-radius:50%;background:var(--ok);
+        box-shadow:0 0 0 0 rgba(31,157,107,.6);animation:pulse 1.8s infinite}
+  @keyframes pulse{70%{box-shadow:0 0 0 9px rgba(31,157,107,0)}100%{box-shadow:0 0 0 0 rgba(31,157,107,0)}}
+
+  .rows{display:flex;flex-direction:column;gap:10px;overflow:auto;flex:1;min-height:180px}
+  .row{border:1px solid var(--line);background:var(--panel-2);border-radius:12px;padding:13px 15px;
+       display:grid;gap:4px;animation:none}
+  .row.fresh{border-color:rgba(31,157,107,.55);
+             box-shadow:0 0 0 1px rgba(31,157,107,.3), 0 10px 26px rgba(0,0,0,.35);
+             animation:land .6s ease}
+  @keyframes land{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
+  .row .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .ref{font:600 13px/1 ui-monospace,Menlo,monospace;color:var(--ok)}
+  .model{font-weight:600;font-size:14.5px}
+  .meta{color:var(--muted);font-size:12.6px}
+  .when{font-size:12.6px}
+  .when b{color:var(--text)}
+  .empty{color:var(--muted);font-size:13.5px;border:1px dashed var(--line);border-radius:12px;
+         padding:20px;text-align:center}
+  .foot{color:var(--muted);font-size:11.6px;border-top:1px solid var(--line);padding-top:13px}
+  .foot code{font:11.4px ui-monospace,Menlo,monospace;color:#b9c6d6}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <section class="stage">
+    <div class="brandrow">
+      <div class="logo">TVS<span>.</span></div>
+      <div class="pill">Premium</div>
+      <div class="pill">Test ride</div>
+    </div>
+
+    <p class="kicker">Apache Series</p>
+    <h1>Apache <em>RTR 310</em></h1>
+    <p class="lede">Built for the rider who wants the track on the commute. Ask our
+    assistant anything about the bike — or just say you want to ride it, and it will
+    book the slot while you are on the call.</p>
+
+    <div class="specs">
+      <div class="spec"><b>312.2<span style="font-size:13px"> cc</span></b><span>Engine</span></div>
+      <div class="spec"><b>35.6<span style="font-size:13px"> PS</span></b><span>Power</span></div>
+      <div class="spec"><b>28.7<span style="font-size:13px"> Nm</span></b><span>Torque</span></div>
+      <div class="spec"><b>₹2.42<span style="font-size:13px"> L</span></b><span>From</span></div>
+    </div>
+
+    <div class="cta">
+      <button class="talk" id="talk">
+        <span class="rings"><i></i><i></i><i></i><i></i></span>
+        Talk to our agent
+      </button>
+      <span class="hint">Speaks to you · books against the dealer system live</span>
+    </div>
+  </section>
+
+  <aside class="proof">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2>Dealer system — live</h2>
+      <span class="live"><span class="blip"></span>MDMS_TEST_RIDE</span>
+    </div>
+    <div class="rows" id="rows">
+      <div class="empty">No bookings yet. When the agent confirms a ride, the row
+      lands here — straight from the dealer database, not from the conversation.</div>
+    </div>
+    <div class="foot">
+      Polling <code>GET /OnlineSalesAPI/TestRide/RecentBookings</code> every 2s.
+      Mobile numbers are masked server-side.
+    </div>
+  </aside>
+
+</div>
+
+<!-- ElevenLabs conversational widget. agent-id is substituted at deploy time. -->
+<elevenlabs-convai agent-id="__AGENT_ID__"></elevenlabs-convai>
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+
+<script>
+(function () {
+  "use strict";
+  var API = "/OnlineSalesAPI/TestRide/RecentBookings?limit=6";
+  var rows = document.getElementById("rows");
+  var seen = Object.create(null);
+  var first = true;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function pretty(d) {
+    var p = String(d || "").split("-");
+    if (p.length !== 3) return esc(d);
+    var dt = new Date(+p[0], +p[1] - 1, +p[2]);
+    if (isNaN(dt)) return esc(d);
+    return dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  function render(list) {
+    if (!list.length) return;
+    rows.innerHTML = "";
+    list.forEach(function (b) {
+      var isNew = !first && !seen[b.TR_NO];
+      seen[b.TR_NO] = 1;
+      var el = document.createElement("div");
+      el.className = "row" + (isNew ? " fresh" : "");
+      el.innerHTML =
+        '<div class="top"><span class="model">' + esc(b.MODEL_DESC) + '</span>' +
+        '<span class="ref">' + esc(b.TR_NO) + '</span></div>' +
+        '<div class="when"><b>' + pretty(b.SLOT_DATE) + ', ' + esc(b.SLOT_TIME) + '</b> · ' +
+        esc(b.SHOWROOM) + '</div>' +
+        '<div class="meta">' + esc(b.CUSTOMER_NAME) + ' · ' + esc(b.MOBILE_NO) +
+        ' · ' + esc(b.STATUS) + '</div>';
+      rows.appendChild(el);
+      if (isNew) setTimeout(function () { el.classList.remove("fresh"); }, 9000);
+    });
+    first = false;
+  }
+
+  function poll() {
+    fetch(API, { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var list = j && j.data && j.data.Bookings;
+        if (Array.isArray(list)) render(list);
+      })
+      .catch(function () { /* a dropped poll is not worth showing the room */ });
+  }
+
+  poll();
+  setInterval(poll, 2000);
+
+  // The button is the visible affordance; the widget owns the actual session, so
+  // clicking it just opens the widget rather than starting a second one.
+  document.getElementById("talk").addEventListener("click", function () {
+    var w = document.querySelector("elevenlabs-convai");
+    if (w && typeof w.toggle === "function") { w.toggle(); return; }
+    var btn = w && w.shadowRoot && w.shadowRoot.querySelector("button");
+    if (btn) btn.click();
+  });
+})();
+</script>
+</body>
+</html>
