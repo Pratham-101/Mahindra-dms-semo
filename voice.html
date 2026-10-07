@@ -398,12 +398,12 @@
         <div class="rf" id="cRef">&mdash;</div>
       </div>
     </div>
-    <div class="pfoot">You will receive an SMS confirmation shortly.</div>
+    <div class="pfoot">Your booking is held at the showroom under the reference above.</div>
   </div>
 </div>
 
 <script type="module">
-import { Conversation } from "https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.27.0/+esm";
+import { Conversation } from "/vendor/elevenlabs-client.js";
 
 const AGENT_ID = "agent_3701m4bcvpfse72t0rvjx5g3skqn";
 const $ = (id) => document.getElementById(id);
@@ -459,8 +459,10 @@ async function start() {
       /denied|NotAllowed|Permission|dismissed/i.test(msg)
         ? "Microphone is blocked. Allow it from the padlock in the address bar, then tap again."
       : /closed|socket|network/i.test(msg)
-        ? "Could not reach the voice service. A VPN, firewall or browser extension is "
-          + "the usual cause — try an incognito window."
+        ? "This network is blocking the voice connection. Corporate web filters "
+          + "(Zscaler, Netskope and similar) permit https to elevenlabs.io but stop "
+          + "the websocket upgrade, which fails exactly like this. It needs "
+          + "allowlisting, or a machine that is not behind the filter."
         : msg;
     setState("idle", "Tap to talk");
     convo = null;

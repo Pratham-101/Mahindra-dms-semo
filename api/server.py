@@ -1022,6 +1022,28 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == f"{BASE}/AuditTrail":            # demo/inspection helper
             rows = q("SELECT * FROM MDMS_API_AUDIT ORDER BY AUDIT_ID DESC LIMIT 25")
             return self._reply(200, "Success", {"Recent": rows})
+        if u.path == "/vendor/elevenlabs-client.js":
+            # The SDK is self-hosted rather than pulled from a CDN. The jsdelivr "+esm"
+            # rollup identifies itself as source=convai, which the ElevenLabs API rejects
+            # with a 403, and the browser reports that only as "connection closed before
+            # session could be established". The published package uses source=js_sdk,
+            # which is accepted, so this is that package bundled as-is. Self-hosting also
+            # means a blocked CDN cannot take the demo down.
+            f = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                             "vendor", "elevenlabs-client.js")
+            if not os.path.exists(f):
+                return self._reply(404, "vendor bundle missing", None)
+            body = open(f, "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/javascript; charset=utf-8")
+            # No caching: a stale copy of this bundle is indistinguishable from a
+            # broken agent, and costs an hour to work out.
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         if u.path in ("/ops", "/ops/"):
             # Internal booking feed. Kept off the customer-facing page on purpose:
             # the demo should look like a product, not like a database viewer.
