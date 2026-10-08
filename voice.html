@@ -406,6 +406,8 @@
 import { Conversation } from "/vendor/elevenlabs-client.js";
 
 const AGENT_ID = "agent_3701m4bcvpfse72t0rvjx5g3skqn";
+// Same origin the voice socket uses - the point is to make the proxy authenticate it.
+const WARMUP_URL = "https://api.elevenlabs.io/v1/convai/conversation";
 const $ = (id) => document.getElementById(id);
 const ast = $("ast"), orb = $("orb"), stateEl = $("state"), errEl = $("err"), hint = $("hint");
 
@@ -437,6 +439,19 @@ async function start() {
     // Ask for the microphone first, so a refusal is reported as a refusal rather
     // than surfacing later as an unexplained disconnect.
     await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // Corporate web filters (Zscaler and similar) answer the first request to a new
+    // host with a 307 to their own auth gateway. A normal page load follows that
+    // redirect without anyone noticing, but a websocket handshake cannot follow a
+    // redirect at all - anything other than 101 fails the connection, which arrives
+    // as close code 1006 and reads as a broken agent. Making one ordinary request
+    // first lets the browser complete that hop, after which the socket is allowed
+    // through. Measured: without this the socket dies 1006 every time; with it the
+    // session establishes. Harmless where no such filter exists.
+    await Promise.race([
+      fetch(WARMUP_URL, { mode: "no-cors", credentials: "include" }).catch(() => {}),
+      new Promise((r) => setTimeout(r, 4000)),
+    ]);
 
     convo = await Conversation.startSession({
       agentId: AGENT_ID,
